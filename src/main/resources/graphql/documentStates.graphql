@@ -1,0 +1,1 @@
+query documentStates($id: ID!, $offset: Int, $limit: Int) { getStatesPdsContract(id: $id, offset: $offset, limit: $limit) { elems { sysHistNumber sysHistoryTime documentId documentType { id name } contractDate contractNumber snils approvalStatus createdBy createdAt assignee attachmentsHead historyInitialized } count } }
