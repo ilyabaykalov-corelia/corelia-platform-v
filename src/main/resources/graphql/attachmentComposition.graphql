@@ -1,1 +1,0 @@
-query attachmentComposition($cond: String, $offset: Int, $limit: Int) { searchAttachmentChange(cond: $cond, offset: $offset, limit: $limit) { elems { id changeKey documentId documentType previousId removed attachmentId baselineAttachments(offset: $offset, limit: $limit) { elems { attachmentId } count } } count } }
