@@ -182,8 +182,11 @@ public class BpmClient {
                                 + "/api/bpmu";
         boolean browser = path.matches("(?i).*/platformv/[^/]+/api$");
         Set<String> candidates = new LinkedHashSet<>();
-        if (!browser) candidates.add(base);
+        // Внешний route Platform V для BPMU — /api/bpmu. Старый /api/tasklist
+        // может принимать соединение и зависать, поэтому сначала используем
+        // канонический gateway route.
         if (!gateway.isEmpty()) candidates.add(gateway);
+        if (!browser) candidates.add(base);
         if (!browser && !path.matches("(?i).*/api$") && !path.matches("(?i).*/api/bpmu$"))
             candidates.add(base + "/api");
         return List.copyOf(candidates);
