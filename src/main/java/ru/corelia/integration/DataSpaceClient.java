@@ -45,11 +45,16 @@ public class DataSpaceClient {
                                         "Не найден GraphQL-ресурс " + key, error);
                             }
                         });
-        return execute(query, variables, auth);
+        return execute(query, variables, auth, java.util.Set.of("commitDocumentAttributes", "commitDocumentNoChange",
+                "commitDocumentFileUpload", "commitDocumentFileReplace", "commitDocumentFileDelete").contains(name));
     }
 
     /** Передаёт текст операции без изменений; пользовательские значения передаются отдельно. */
     public JsonNode execute(String query, JsonNode variables, AuthContext auth) {
+        return execute(query, variables, auth, false);
+    }
+
+    private JsonNode execute(String query, JsonNode variables, AuthContext auth, boolean multiaggregate) {
         var operation = OPERATION.matcher(query.stripLeading());
         if (!operation.find())
             throw new IllegalArgumentException("GraphQL-запрос должен иметь явное имя операции");
@@ -63,9 +68,9 @@ public class DataSpaceClient {
                             "POST",
                             object("query", query, "variables", variables),
                             auth,
-                            java.util.Map.of(
-                                    "Accept",
-                                    "application/graphql-response+json, application/json"));
+                            multiaggregate
+                                    ? java.util.Map.of("Accept", "application/graphql-response+json, application/json", "X-DSPC-multiaggregate", "true")
+                                    : java.util.Map.of("Accept", "application/graphql-response+json, application/json"));
             LogJson.info(
                     "DataSpace GraphQL completed",
                     object(
@@ -107,6 +112,9 @@ public class DataSpaceClient {
                             502,
                             "message",
                             message));
+            String details = write(response.path("errors"));
+            if (details.contains("COMPARE_NOT_EQUAL") || details.contains("AggregateVersionException"))
+                throw new ApiException(409, "Документ изменён другим запросом. Обновите карточку.");
             throw new ApiException(502, message);
         }
         if (!response.path("data").isObject())
