@@ -1,0 +1,1 @@
+query searchPdsContractVersion($cond: String, $offset: Int, $limit: Int) { searchPdsContractVersion(cond: $cond, offset: $offset, limit: $limit) { elems { id documentId version contractDate contractNumber snils attachments createdBy createdAt closedAt } count } }
