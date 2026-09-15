@@ -45,7 +45,7 @@ public class DataSpaceClient {
                                         "Не найден GraphQL-ресурс " + key, error);
                             }
                         });
-        return execute(query, variables, auth, java.util.Set.of("commitDocumentAttributes", "commitDocumentNoChange",
+        return execute(query, variables, auth, java.util.Set.of("commitKidOpsAttributes", "commitDocumentAttributes", "commitDocumentNoChange",
                 "commitDocumentFileUpload", "commitDocumentFileReplace", "commitDocumentFileDelete").contains(name));
     }
 
