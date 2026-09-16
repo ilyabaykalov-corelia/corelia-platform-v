@@ -1,25 +1,22 @@
 # corelia-platform-v
 
-Адаптер HTTP API Platform V: DataSpace, BPMX/BPMU, DAM и контракт договора ПДС.
-Бизнес-процессы и изменения данных исполняет платформа.
+Библиотека интеграции Corelia с DataSpace, BPMX/BPMU и DAM. Содержит DocumentTypes, контракт ПДС, проекции документов и зарегистрированные GraphQL-ресурсы. КИД ОПС также зарегистрирован в DocumentTypes; его валидация находится в corelia-common. Новые правила изменения документов размещаются в document-service.
 
-## Контракт стабильной платформы
+## Контракты
 
-GraphQL-ресурсы соответствуют `sber-npf-platform-v`, ветка `dev`, коммит `e366b493027870256c8686ae564466e89b79e44e`.
-Тела операций копируются без изменений из `model.graphql-permissions.json`.
-Используются восемь операций: `refDocumentTypeListGet`, `searchDocumentProcessSettings`,
-`searchPdsContract`, `updatePdsContract`, `searchAttachment`, `createAttachment`,
-`replaceAttachmentVersion`, `deleteAttachment`.
+Тексты в `src/main/resources/graphql` должны точно соответствовать разрешённым операциям соседнего комплекта `sber-npf-platform-v/model.graphql-permissions.json`. Тестовая фикстура `corelia-system-tests/src/test/resources/platform-v/allowed-requests.json` проверяет имя и полное тело запроса.
 
-Создание договора выполняет BPMN `Process_pds_contract_approval`, выбранный через
-`DocumentProcessSettings`. Адаптер не создаёт договор отдельной мутацией.
-После очистки DataSpace должны быть загружены словари `DocumentType` и
-`DocumentProcessSettings` из стабильного проекта платформы.
+Используются общие Document, DocumentVersion и DocumentCommand, дочерние реквизиты PdsContract/KidOps и независимые метаданные Attachment. Команды commitDocumentAttributes, commitKidOpsAttributes, commitDocumentNoChange и commitDocumentFileUpload/Replace/Delete фиксируют изменения через атомарные пакеты. Инициализация снимка использует initializeDocumentVersion. Полный перечень ресурсов определяется каталогом graphql, а не историческим числом операций.
 
-История атрибутов и документов, журнал состава вложений и снимки карточки не используются.
-Версии файлов сохраняются через `logicalAttachmentId`, `version` и `current`.
-Замена файла создаёт новую запись и снимает признак текущей у предыдущей в одном packet.
+Создание выполняется соответствующим BPMN, выбранным через DocumentProcessSettings. КИД ОПС создаётся с подготовленным первым файлом. Справочники DocumentType и DocumentProcessSettings, модель, permissions и процессы должны быть совместимы с ядром.
 
-Сборка и проверка из родительского каталога: `mvn clean verify` (Java 25).
-Системные тесты в `corelia-system-tests` сверяют полное тело каждого исполняемого
-GraphQL-запроса со снимком разрешений стабильной платформы.
+## Сборка и документация
+
+Из корня Corelia: `mvn -pl corelia-platform-v -am package -DskipTests`; общая проверка — `./scripts/test.sh` на Java 25.
+
+- [Реализация](../docs/implementation.md)
+- [Версии](../docs/document-versioning.md)
+- [КИД ОПС](../docs/kid-ops.md)
+- [Проверки](../docs/testing.md)
+
+Локальная имитация не доказывает принятие модели реальным SDK-генератором или исполнение permissions платформы.
