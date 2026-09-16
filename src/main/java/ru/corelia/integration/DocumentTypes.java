@@ -63,7 +63,7 @@ public final class DocumentTypes {
                 fields.set(entry.getKey(), field);
             }
             items.add(object("code", definition.id(), "name", definition.title(), "schema", schema, "ui", definition.ui(), "fields", fields,
-                "statuses", definition.presentation().path("statuses"), "initialAttachmentRequired", initialAttachmentRequired(definition.id()),
+                "statuses", definition.presentation().path("statuses"), "attachments", definition.attachments(), "initialAttachmentRequired", initialAttachmentRequired(definition.id()),
                 "operations", List.of("read", "search", "create", "update", "attachments")));
         }
         return object("schemaVersion", 1, "items", items, "total", items.size());
