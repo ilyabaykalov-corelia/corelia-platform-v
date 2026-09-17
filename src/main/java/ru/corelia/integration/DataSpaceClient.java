@@ -2,7 +2,6 @@ package ru.corelia.integration;
 
 import static ru.corelia.support.Json.*;
 
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import ru.corelia.auth.AuthContext;
@@ -12,9 +11,6 @@ import ru.corelia.support.LogJson;
 
 import tools.jackson.databind.JsonNode;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** Передает неизмененные GraphQL-операции DataSpace с токеном текущего пользователя. */
 @Component
@@ -24,29 +20,24 @@ public class DataSpaceClient {
     private static final java.util.regex.Pattern OPERATION =
             java.util.regex.Pattern.compile(
                     "^(?:query|mutation)\\s+([_A-Za-z][_0-9A-Za-z]*)(?=[\\s({])");
-    private final ConcurrentHashMap<String, String> queries = new ConcurrentHashMap<>();
+    private final java.util.Map<String, ru.corelia.configuration.ConfigurationLoader.Operation> operations;
 
-    public DataSpaceClient(CoreliaConfig config, PlatformHttp http) {
+    public DataSpaceClient(CoreliaConfig config, PlatformHttp http, ru.corelia.configuration.ConfigurationLoader.LoadedConfiguration configuration) {
+        this.operations = configuration.operations();
+        for (String name : java.util.List.of("searchDocument", "searchDocumentVersion", "searchDocumentCommand", "searchAttachment",
+                "initializeDocumentVersion", "commitDocumentNoChange", "commitDocumentFileUpload", "commitDocumentFileReplace",
+                "commitDocumentFileDelete", "searchDocumentProcessSettings", "refDocumentTypeListGet")) {
+            if (!operations.containsKey(name)) throw new ru.corelia.configuration.ConfigurationException("Missing Platform V operation: " + name);
+            if (name.startsWith("commit") && !operations.get(name).multiaggregate()) throw new ru.corelia.configuration.ConfigurationException("Version commits require multiaggregate: " + name);
+        }
         this.config = config;
         this.http = http;
     }
 
     public JsonNode query(String name, JsonNode variables, AuthContext auth) {
-        String query =
-                queries.computeIfAbsent(
-                        name,
-                        key -> {
-                            try {
-                                return new ClassPathResource("graphql/" + key + ".graphql")
-                                        .getContentAsString(StandardCharsets.UTF_8)
-                                        .trim();
-                            } catch (IOException error) {
-                                throw new IllegalStateException(
-                                        "Не найден GraphQL-ресурс " + key, error);
-                            }
-                        });
-        return execute(query, variables, auth, java.util.Set.of("commitKidOpsAttributes", "commitDocumentAttributes", "commitDocumentNoChange",
-                "commitDocumentFileUpload", "commitDocumentFileReplace", "commitDocumentFileDelete").contains(name));
+        var operation = operations.get(name);
+        if (operation == null) throw new IllegalStateException("Не зарегистрирована GraphQL-операция " + name);
+        return execute(operation.text(), variables, auth, operation.multiaggregate());
     }
 
     /** Передаёт текст операции без изменений; пользовательские значения передаются отдельно. */
