@@ -40,11 +40,6 @@ public class DataSpaceClient {
         return execute(operation.text(), variables, auth, operation.multiaggregate());
     }
 
-    /** Передаёт текст операции без изменений; пользовательские значения передаются отдельно. */
-    public JsonNode execute(String query, JsonNode variables, AuthContext auth) {
-        return execute(query, variables, auth, false);
-    }
-
     private JsonNode execute(String query, JsonNode variables, AuthContext auth, boolean multiaggregate) {
         var operation = OPERATION.matcher(query.stripLeading());
         if (!operation.find())
