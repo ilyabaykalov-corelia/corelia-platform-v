@@ -131,7 +131,7 @@ public class FileStorageClient {
         }
     }
 
-    public HttpResponse<byte[]> download(String path, AuthContext auth) {
+    public HttpResponse<InputStream> download(String path, AuthContext auth) {
         String encoded =
                 String.join(
                         "/",
@@ -144,10 +144,9 @@ public class FileStorageClient {
                 ru.corelia.support.Json.object(
                         "url", LogJson.upstreamTarget(url),
                         "path", path));
-        return http.raw(
+        return http.rawStream(
                 url,
                 "GET",
-                new byte[0],
                 Map.of("Authorization", auth.authorization(), "Accept", "*/*"));
     }
 
