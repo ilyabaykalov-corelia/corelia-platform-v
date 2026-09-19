@@ -10,7 +10,7 @@ import ru.corelia.config.CoreliaConfig;
 import ru.corelia.http.ApiException;
 import ru.corelia.support.LogJson;
 
-import java.io.ByteArrayOutputStream;
+import java.io.*;
 import java.net.URI;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
@@ -50,17 +50,24 @@ public class FileStorageClient {
 
     public void upload(
             String path, String fileName, String contentType, byte[] bytes, AuthContext auth) {
+        upload(path, fileName, contentType, new ByteArrayInputStream(bytes), bytes.length, auth);
+    }
+
+    public void upload(
+            String path,
+            String fileName,
+            String contentType,
+            InputStream content,
+            long size,
+            AuthContext auth) {
         String boundary = "SberNpf" + UUID.randomUUID().toString().replace("-", "");
-        var body = new ByteArrayOutputStream();
-        append(
-                body,
+        byte[] prefix = bytes(
                 "--"
                         + boundary
                         + "\r\nContent-Disposition: form-data; name=\"size\"\r\n\r\n"
-                        + bytes.length
+                        + size
                         + "\r\n");
-        append(
-                body,
+        byte[] pathPart = bytes(
                 "--"
                         + boundary
                         + "\r\nContent-Disposition: form-data; name=\"path\"\r\n\r\n"
@@ -68,8 +75,7 @@ public class FileStorageClient {
                         + "\r\n");
         String escapedName =
                 fileName.replace("\r", "%0D").replace("\n", "%0A").replace("\"", "%22");
-        append(
-                body,
+        byte[] filePart = bytes(
                 "--"
                         + boundary
                         + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\""
@@ -77,8 +83,7 @@ public class FileStorageClient {
                         + "\"\r\nContent-Type: "
                         + contentType.replace("\r", "").replace("\n", "")
                         + "\r\n\r\n");
-        body.writeBytes(bytes);
-        append(body, "\r\n--" + boundary + "--\r\n");
+        byte[] suffix = bytes("\r\n--" + boundary + "--\r\n");
         String url = base() + "/upload/files/";
         LogJson.info(
                 "Uploading attachment to Platform V file storage",
@@ -87,13 +92,18 @@ public class FileStorageClient {
                         "path", path,
                         "fileName", fileName,
                         "contentType", contentType,
-                        "size", bytes.length,
-                        "sizeText", sizeText(bytes.length)));
+                        "size", size,
+                        "sizeText", sizeText(size)));
         try {
             http.raw(
                     url,
                     "POST",
-                    body.toByteArray(),
+                    java.net.http.HttpRequest.BodyPublishers.concat(
+                            java.net.http.HttpRequest.BodyPublishers.ofByteArray(prefix),
+                            java.net.http.HttpRequest.BodyPublishers.ofByteArray(pathPart),
+                            java.net.http.HttpRequest.BodyPublishers.ofByteArray(filePart),
+                            java.net.http.HttpRequest.BodyPublishers.ofInputStream(() -> content),
+                            java.net.http.HttpRequest.BodyPublishers.ofByteArray(suffix)),
                     Map.of(
                             "Authorization",
                             auth.authorization(),
@@ -109,8 +119,8 @@ public class FileStorageClient {
                             "url", LogJson.upstreamTarget(url),
                             "path", path,
                             "fileName", fileName,
-                            "size", bytes.length,
-                            "sizeText", sizeText(bytes.length)));
+                            "size", size,
+                            "sizeText", sizeText(size)));
             throw new ApiException(
                     413,
                     "Файл \""
@@ -146,8 +156,8 @@ public class FileStorageClient {
         return result.isEmpty() ? "attachment.bin" : result;
     }
 
-    private static void append(ByteArrayOutputStream out, String value) {
-        out.writeBytes(value.getBytes(StandardCharsets.UTF_8));
+    private static byte[] bytes(String value) {
+        return value.getBytes(StandardCharsets.UTF_8);
     }
 
     private static String sizeText(long bytes) {
