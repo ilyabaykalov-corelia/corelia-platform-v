@@ -56,7 +56,9 @@ public class DataSpaceClient {
                             auth,
                             multiaggregate
                                     ? java.util.Map.of("Accept", "application/graphql-response+json, application/json", "X-DSPC-multiaggregate", "true")
-                                    : java.util.Map.of("Accept", "application/graphql-response+json, application/json"));
+                                    : java.util.Map.of("Accept", "application/graphql-response+json, application/json"),
+                            "dataspace",
+                            operation.group(1).startsWith("search") ? "query" : "mutation");
             LogJson.info(
                     "DataSpace GraphQL completed",
                     object(

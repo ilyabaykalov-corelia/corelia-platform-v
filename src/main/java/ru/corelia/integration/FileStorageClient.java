@@ -110,7 +110,9 @@ public class FileStorageClient {
                             "Accept",
                             "application/json",
                             "Content-Type",
-                            "multipart/form-data; boundary=" + boundary));
+                            "multipart/form-data; boundary=" + boundary),
+                    "storage",
+                    "put");
         } catch (ApiException error) {
             if (error.status() != 413) throw error;
             LogJson.info(
