@@ -5,7 +5,7 @@ import static ru.corelia.support.Json.*;
 import org.springframework.stereotype.Component;
 
 import ru.corelia.auth.AuthContext;
-import ru.corelia.config.CoreliaConfig;
+import ru.corelia.platformv.PlatformVConfig;
 import ru.corelia.http.ApiException;
 import ru.corelia.support.LogJson;
 
@@ -15,14 +15,14 @@ import tools.jackson.databind.JsonNode;
 /** Передает неизмененные GraphQL-операции DataSpace с токеном текущего пользователя. */
 @Component
 public class DataSpaceClient {
-    private final CoreliaConfig config;
+    private final PlatformVConfig config;
     private final PlatformHttp http;
     private static final java.util.regex.Pattern OPERATION =
             java.util.regex.Pattern.compile(
                     "^(?:query|mutation)\\s+([_A-Za-z][_0-9A-Za-z]*)(?=[\\s({])");
     private final java.util.Map<String, ru.corelia.configuration.ConfigurationLoader.Operation> operations;
 
-    public DataSpaceClient(CoreliaConfig config, PlatformHttp http, ru.corelia.configuration.ConfigurationLoader.LoadedConfiguration configuration) {
+    public DataSpaceClient(PlatformVConfig config, PlatformHttp http, ru.corelia.configuration.ConfigurationLoader.LoadedConfiguration configuration) {
         this.operations = configuration.operations();
         for (String name : java.util.List.of("searchDocument", "searchDocumentVersion", "searchDocumentCommand", "searchAttachment",
                 "initializeDocumentVersion", "commitDocumentNoChange", "commitDocumentFileUpload", "commitDocumentFileReplace",

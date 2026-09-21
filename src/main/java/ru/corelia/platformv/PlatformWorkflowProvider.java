@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.util.*;
 import org.springframework.stereotype.Component;
 import ru.corelia.auth.AuthContext;
-import ru.corelia.config.CoreliaConfig;
 import ru.corelia.configuration.DocumentTypeCatalog;
 import ru.corelia.http.ApiException;
 import ru.corelia.integration.BpmClient;
@@ -21,8 +20,8 @@ import tools.jackson.databind.node.ObjectNode;
 /** Platform V реализация запуска и чтения процессов Corelia. */
 @Component
 public final class PlatformWorkflowProvider implements WorkflowProvider {
-    private final BpmClient bpm; private final DataSpaceClient data; private final CoreliaConfig config; private final DocumentTypeCatalog types;
-    public PlatformWorkflowProvider(BpmClient bpm, DataSpaceClient data, CoreliaConfig config, DocumentTypeCatalog types) { this.bpm = bpm; this.data = data; this.config = config; this.types = types; }
+    private final BpmClient bpm; private final DataSpaceClient data; private final PlatformVConfig config; private final DocumentTypeCatalog types;
+    public PlatformWorkflowProvider(BpmClient bpm, DataSpaceClient data, PlatformVConfig config, DocumentTypeCatalog types) { this.bpm = bpm; this.data = data; this.config = config; this.types = types; }
     @Override public ProcessInstance start(WorkflowContext context, AuthContext auth) {
         ObjectNode payload = object(); context.attributes().forEach(payload::set);
         payload.put("tenant", config.tenant()).put("appInstanceId", config.appId()).put("documentId", context.documentId()).put("documentType", context.documentType())

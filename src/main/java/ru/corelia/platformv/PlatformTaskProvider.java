@@ -6,7 +6,6 @@ import java.util.*;
 import org.springframework.stereotype.Component;
 import ru.corelia.auth.AuthContext;
 import ru.corelia.cache.UserCache;
-import ru.corelia.config.CoreliaConfig;
 import ru.corelia.configuration.DocumentTypeCatalog;
 import ru.corelia.http.ApiException;
 import ru.corelia.integration.BpmClient;
@@ -21,8 +20,8 @@ import tools.jackson.databind.node.ObjectNode;
 @Component
 public final class PlatformTaskProvider implements TaskProvider {
     private static final List<String> SCOPES = List.of("EXECUTOR", "MANAGER");
-    private final BpmClient bpm; private final ParallelCalls parallel; private final DocumentTypeCatalog types; private final UserCache cache; private final CoreliaConfig config; private final DataSpaceClient data;
-    public PlatformTaskProvider(BpmClient bpm, ParallelCalls parallel, DocumentTypeCatalog types, UserCache cache, CoreliaConfig config, DataSpaceClient data) { this.bpm = bpm; this.parallel = parallel; this.types = types; this.cache = cache; this.config = config; this.data = data; }
+    private final BpmClient bpm; private final ParallelCalls parallel; private final DocumentTypeCatalog types; private final UserCache cache; private final PlatformVConfig config; private final DataSpaceClient data;
+    public PlatformTaskProvider(BpmClient bpm, ParallelCalls parallel, DocumentTypeCatalog types, UserCache cache, PlatformVConfig config, DataSpaceClient data) { this.bpm = bpm; this.parallel = parallel; this.types = types; this.cache = cache; this.config = config; this.data = data; }
     @Override public List<WorkflowTask> search(TaskSearchRequest request, AuthContext auth) {
         record Query(String status, String scope) {}
         List<Query> queries = request.statuses().isEmpty() ? SCOPES.stream().map(scope -> new Query("", scope)).toList() : request.statuses().stream().flatMap(status -> SCOPES.stream().map(scope -> new Query(status, scope))).toList();

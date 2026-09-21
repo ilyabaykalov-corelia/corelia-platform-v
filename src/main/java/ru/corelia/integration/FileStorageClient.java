@@ -1,12 +1,12 @@
 package ru.corelia.integration;
 
-import static ru.corelia.config.CoreliaConfig.trim;
+import static ru.corelia.platformv.PlatformVConfig.trim;
 import static ru.corelia.support.Json.encode;
 
 import org.springframework.stereotype.Component;
 
 import ru.corelia.auth.AuthContext;
-import ru.corelia.config.CoreliaConfig;
+import ru.corelia.platformv.PlatformVConfig;
 import ru.corelia.http.ApiException;
 import ru.corelia.support.LogJson;
 
@@ -19,10 +19,10 @@ import java.util.*;
 /** Хранит содержимое вложений в DAM; постоянного файлового хранилища у сервиса вложений нет. */
 @Component
 public class FileStorageClient {
-    private final CoreliaConfig config;
+    private final PlatformVConfig config;
     private final PlatformHttp http;
 
-    public FileStorageClient(CoreliaConfig config, PlatformHttp http) {
+    public FileStorageClient(PlatformVConfig config, PlatformHttp http) {
         this.config = config;
         this.http = http;
     }
