@@ -13,6 +13,7 @@ import ru.corelia.integration.BpmClient;
 import ru.corelia.integration.DataSpaceClient;
 import ru.corelia.provider.WorkflowProvider;
 import ru.corelia.provider.model.ProcessInstance;
+import ru.corelia.provider.model.AttachmentMetadata;
 import ru.corelia.provider.model.WorkflowContext;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
@@ -26,6 +27,13 @@ public final class PlatformWorkflowProvider implements WorkflowProvider {
         ObjectNode payload = object(); context.attributes().forEach(payload::set);
         payload.put("tenant", config.tenant()).put("appInstanceId", config.appId()).put("documentId", context.documentId()).put("documentType", context.documentType())
                 .put("createdBy", context.createdBy()).put("createdAt", Instant.now().toString());
+        if (context.initialAttachment() != null) {
+            AttachmentMetadata file = context.initialAttachment();
+            payload.put("initial_attachmentId", file.id()).put("initial_fileName", file.fileName()).put("initial_contentType", file.contentType())
+                    .put("initial_size", file.size()).put("initial_storageReference", file.storageReference().value());
+            if (file.uploadedAt() != null) payload.put("initial_uploadedAt", file.uploadedAt().toString());
+            payload.put("creationKey", context.creationKey()).put("creationHash", context.creationHash());
+        }
         ObjectNode external = object("documentId", context.documentId(), "documentType", context.documentType(), "tenant", config.tenant(), "appInstanceId", config.appId());
         for (JsonNode field : list(types.definition(context.documentType()).workflow().path("externalFields"))) external.set(text(field), context.attributes().get(text(field)));
         JsonNode result = bpm.process("/processes/" + encode(processId(context.documentType(), auth)) + ":start", object("businessKey", context.externalBusinessKey(), "payload", payload, "externalIds", external), auth);
@@ -47,7 +55,8 @@ public final class PlatformWorkflowProvider implements WorkflowProvider {
         throw new ApiException(400, "Для вида документа " + type + " не настроен активный процесс создания");
     }
     private static void incident(JsonNode value) {
-        if (value.path("isIncident").asBoolean() || list(value.path("currentActivities")).stream().anyMatch(item -> item.path("isIncident").asBoolean()))
-            throw new ApiException(502, "Процесс провайдера завершился с инцидентом");
+        JsonNode activity = list(value.path("currentActivities")).stream().filter(item -> item.path("isIncident").asBoolean()).findFirst().orElse(object());
+        if (value.path("isIncident").asBoolean() || !activity.isEmpty())
+            throw new ApiException(502, "Процесс не выполнился и упал на " + fallback(first(activity, "definitionId", "name"), "неизвестной активности"));
     }
 }
