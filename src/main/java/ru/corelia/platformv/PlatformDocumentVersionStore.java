@@ -58,8 +58,8 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
         if (attributes.isTextual()) attributes = parse(text(attributes));
         var mapped = new LinkedHashMap<String, JsonNode>();
         attributes.properties().forEach(entry -> mapped.put(entry.getKey(), entry.getValue().deepCopy()));
-        return new DocumentVersion(text(value, "id"), text(value, "documentId"), (int) number(value, "version", 0), mapped,
-                text(value, "status"), instant(text(value, "createdAt")), text(value, "createdBy"));
+        return new DocumentVersion(text(value, "id"), text(value, "documentId"), (int) number(value, "version", 0),
+                (int) number(value, "schemaVersion", 0), mapped, text(value, "status"), instant(text(value, "createdAt")), text(value, "createdBy"), List.of());
     }
 
     private AttachmentMetadata attachment(JsonNode value) {
