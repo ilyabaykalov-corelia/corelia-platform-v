@@ -16,7 +16,8 @@ import tools.jackson.databind.JsonNode;
 @Component
 public final class PlatformDocumentVersionStore implements DocumentVersionStore {
     private final DataSpaceClient data;
-    public PlatformDocumentVersionStore(DataSpaceClient data) { this.data = data; }
+    private final PlatformDocumentStore documents;
+    public PlatformDocumentVersionStore(DataSpaceClient data, PlatformDocumentStore documents) { this.data = data; this.documents = documents; }
 
     @Override public List<DocumentVersion> versions(String documentId, AuthContext auth) {
         return search("searchDocumentVersion", "documentId", documentId, auth).stream().map(this::version).toList();
@@ -24,6 +25,13 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
 
     @Override public List<AttachmentMetadata> attachments(String documentId, AuthContext auth) {
         return search("searchAttachment", "documentId", documentId, auth).stream().map(this::attachment).toList();
+    }
+
+    @Override public DocumentVersionState state(String type, String documentId, AuthContext auth) {
+        List<DocumentVersion> versions = versions(documentId, auth);
+        DocumentVersion current = versions.stream().max(Comparator.comparingInt(DocumentVersion::number))
+                .orElseThrow(() -> new ApiException(502, "Для документа отсутствуют версии"));
+        return new DocumentVersionState(documents.get(type, documentId, auth), current, versions, attachments(documentId, auth));
     }
 
     @Override public IdempotencyReceipt receipt(String key, AuthContext auth) {
