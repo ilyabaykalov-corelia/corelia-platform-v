@@ -19,6 +19,12 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
     private final PlatformDocumentStore documents;
     public PlatformDocumentVersionStore(DataSpaceClient data, PlatformDocumentStore documents) { this.data = data; this.documents = documents; }
 
+    @Override public String documentType(String documentId, AuthContext auth) {
+        return search("searchDocument", "documentId", documentId, auth).stream().filter(value -> documentId.equals(text(value, "documentId")))
+                .map(value -> text(value.path("documentType"), "id")).filter(value -> !value.isEmpty()).findFirst()
+                .orElseThrow(() -> new ApiException(404, "Документ не найден"));
+    }
+
     @Override public List<DocumentVersion> versions(String documentId, AuthContext auth) {
         return search("searchDocumentVersion", "documentId", documentId, auth).stream().map(this::version).toList();
     }
