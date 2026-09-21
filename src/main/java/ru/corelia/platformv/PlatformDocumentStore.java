@@ -65,7 +65,8 @@ public final class PlatformDocumentStore implements DocumentStore {
         try { createdAt = timestamp.isEmpty() ? null : Instant.parse(timestamp); }
         catch (RuntimeException ignored) { createdAt = null; }
         return new DocumentSnapshot(text(document, "documentId"), text(document.path("documentType"), "id"),
-                text(document, "status"), attributes, text(document, "createdBy"), createdAt, text(document, "changeToken"));
+                text(document, "status"), (int) number(document, "version", 0), attributes,
+                text(document, "createdBy"), createdAt, text(document, "changeToken"));
     }
 
     private static String condition(String field, String value) {
