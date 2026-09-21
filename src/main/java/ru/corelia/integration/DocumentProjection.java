@@ -1,19 +1,20 @@
 package ru.corelia.integration;
 
 import static ru.corelia.support.Json.*;
+import ru.corelia.configuration.DocumentTypeCatalog;
 import ru.corelia.http.ApiException;
 import tools.jackson.databind.JsonNode;
 
 /** Преобразование Document и дочерних реквизитов DataSpace в состояние ядра. */
 public final class DocumentProjection {
     private DocumentProjection() {}
-    public static JsonNode document(JsonNode row, DocumentTypes types) {
+    public static JsonNode document(JsonNode row, DocumentTypeCatalog types) {
         String type = text(row.path("documentType"), "id");
-        JsonNode details = row.path(types.details(type));
+        JsonNode details = row.path(text(types.definition(type).storage(), "details"));
         if (!details.isObject() || text(details, "id").isEmpty())
             throw new ApiException(502, "У документа отсутствуют реквизиты его вида");
         var result = copy(row);
-        for (String registered : types.types()) result.remove(types.details(registered));
+        for (String registered : types.types()) result.remove(text(types.definition(registered).storage(), "details"));
         result.put("detailsId", text(details, "id"));
         result.put("status", text(details, "status"));
         var attrs = object();
