@@ -4,6 +4,7 @@ import static ru.corelia.support.Json.*;
 import org.springframework.stereotype.Component;
 import ru.corelia.auth.AuthContext;
 import ru.corelia.auth.PermissionChecker;
+import ru.corelia.provider.PermissionProvider;
 import ru.corelia.platformv.PlatformVConfig;
 import ru.corelia.configuration.ConfigurationException;
 import ru.corelia.configuration.ConfigurationLoader;
@@ -15,9 +16,9 @@ import java.nio.file.*;
 import java.io.IOException;
 import java.util.*;
 
-/** Read-only preflight using the same ac.json deployed to Platform V; mutations retain platform JWT checks. */
+/** Проверяет права по тому же ac.json, который поставляется для Platform V. */
 @Component
-public final class PlatformVPermissionChecker implements PermissionChecker {
+public final class PlatformVPermissionChecker implements PermissionChecker, PermissionProvider {
     private final Map<String, Set<String>> permissions;
     @org.springframework.beans.factory.annotation.Autowired
     public PlatformVPermissionChecker(PlatformVConfig environment, ConfigurationLoader.LoadedConfiguration configuration) {
