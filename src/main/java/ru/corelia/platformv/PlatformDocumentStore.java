@@ -2,7 +2,6 @@ package ru.corelia.platformv;
 
 import static ru.corelia.support.Json.*;
 
-import java.time.Instant;
 import java.util.*;
 import org.springframework.stereotype.Component;
 import ru.corelia.auth.AuthContext;
@@ -60,10 +59,7 @@ public final class PlatformDocumentStore implements DocumentStore {
     private DocumentSnapshot snapshot(JsonNode document) {
         var attributes = new LinkedHashMap<String, JsonNode>();
         document.path("attributes").properties().forEach(item -> attributes.put(item.getKey(), item.getValue().deepCopy()));
-        String timestamp = text(document, "createdAt");
-        Instant createdAt;
-        try { createdAt = timestamp.isEmpty() ? null : Instant.parse(timestamp); }
-        catch (RuntimeException ignored) { createdAt = null; }
+        var createdAt = PlatformTimestamp.parse(text(document, "createdAt"));
         return new DocumentSnapshot(text(document, "documentId"), text(document.path("documentType"), "id"),
                 text(document, "status"), (int) number(document, "version", 0), attributes,
                 text(document, "createdBy"), createdAt, nullableText(document, "changeToken"));

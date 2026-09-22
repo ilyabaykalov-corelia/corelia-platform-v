@@ -161,14 +161,14 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
         var mapped = new LinkedHashMap<String, JsonNode>();
         attributes.properties().forEach(entry -> mapped.put(entry.getKey(), entry.getValue().deepCopy()));
         return new DocumentVersion(text(value, "id"), text(value, "documentId"), (int) number(value, "version", 0),
-                (int) number(value, "schemaVersion", 0), mapped, text(value, "status"), instant(text(value, "createdAt")),
-                text(value, "createdBy"), instant(text(value, "closedAt")), manifest(value));
+                (int) number(value, "schemaVersion", 0), mapped, text(value, "status"), PlatformTimestamp.parse(text(value, "createdAt")),
+                text(value, "createdBy"), PlatformTimestamp.parse(text(value, "closedAt")), manifest(value));
     }
 
     private AttachmentMetadata attachment(JsonNode value) {
         return new AttachmentMetadata(first(value, "attachmentId", "id"), first(value, "logicalAttachmentId", "attachmentId", "id"),
                 text(value, "documentId"), text(value, "fileName"), text(value, "contentType"), number(value, "size", 0),
-                number(value, "version", 1), !value.path("current").isBoolean() || value.path("current").asBoolean(), instant(text(value, "uploadedAt")),
+                number(value, "version", 1), !value.path("current").isBoolean() || value.path("current").asBoolean(), PlatformTimestamp.parse(text(value, "uploadedAt")),
                 new StorageReference(text(value, "storageReference")));
     }
 
@@ -178,6 +178,5 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
         catch (RuntimeException error) { throw new ApiException(502, "Некорректный манифест вложений документа"); }
     }
 
-    private static Instant instant(String value) { try { return value.isBlank() ? null : Instant.parse(value); } catch (RuntimeException ignored) { return null; } }
     private static String nullableText(JsonNode node, String field) { return node.hasNonNull(field) ? text(node, field) : null; }
 }

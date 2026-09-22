@@ -2,7 +2,6 @@ package ru.corelia.platformv;
 
 import static ru.corelia.support.Json.*;
 
-import java.time.Instant;
 import java.util.*;
 import org.springframework.stereotype.Component;
 import ru.corelia.auth.AuthContext;
@@ -24,6 +23,5 @@ public final class PlatformAttachmentCatalog implements AttachmentCatalog {
         AttachmentMetadata current = find(id, auth); return all(auth).stream().map(this::attachment).filter(value -> current.documentId().equals(value.documentId()) && current.logicalId().equals(value.logicalId())).toList();
     }
     private List<JsonNode> all(AuthContext auth) { var result = new ArrayList<JsonNode>(); for (int offset = 0; ; offset += 500) { JsonNode page = data.query("searchAttachment", object("offset", offset, "limit", 500), auth).path("searchAttachment"); List<JsonNode> batch = list(page.path("elems")); result.addAll(batch); if (offset + batch.size() >= number(page, "count", offset + batch.size())) return result; if (batch.isEmpty()) throw new ApiException(502, "Неполная выборка вложений"); } }
-    private AttachmentMetadata attachment(JsonNode value) { return new AttachmentMetadata(first(value, "attachmentId", "id"), first(value, "logicalAttachmentId", "attachmentId", "id"), text(value, "documentId"), text(value, "fileName"), text(value, "contentType"), number(value, "size", 0), number(value, "version", 1), !value.path("current").isBoolean() || value.path("current").asBoolean(), instant(text(value, "uploadedAt")), new StorageReference(text(value, "storageReference"))); }
-    private static Instant instant(String value) { try { return value.isEmpty() ? null : Instant.parse(value); } catch (RuntimeException ignored) { return null; } }
+    private AttachmentMetadata attachment(JsonNode value) { return new AttachmentMetadata(first(value, "attachmentId", "id"), first(value, "logicalAttachmentId", "attachmentId", "id"), text(value, "documentId"), text(value, "fileName"), text(value, "contentType"), number(value, "size", 0), number(value, "version", 1), !value.path("current").isBoolean() || value.path("current").asBoolean(), PlatformTimestamp.parse(text(value, "uploadedAt")), new StorageReference(text(value, "storageReference"))); }
 }
