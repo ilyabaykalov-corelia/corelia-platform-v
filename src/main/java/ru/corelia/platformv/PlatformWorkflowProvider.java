@@ -11,7 +11,6 @@ import ru.corelia.configuration.DocumentTypeCatalog;
 import ru.corelia.http.ApiException;
 import ru.corelia.provider.WorkflowProvider;
 import ru.corelia.provider.model.ProcessInstance;
-import ru.corelia.provider.model.AttachmentMetadata;
 import ru.corelia.provider.model.WorkflowContext;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
@@ -22,20 +21,29 @@ public final class PlatformWorkflowProvider implements WorkflowProvider {
     private final BpmClient bpm; private final DataSpaceClient data; private final PlatformVConfig config; private final DocumentTypeCatalog types; private final PlatformVDocumentBindings bindings;
     public PlatformWorkflowProvider(BpmClient bpm, DataSpaceClient data, PlatformVConfig config, DocumentTypeCatalog types, PlatformVDocumentBindings bindings) { this.bpm = bpm; this.data = data; this.config = config; this.types = types; this.bindings = bindings; }
     @Override public ProcessInstance start(WorkflowContext context, AuthContext auth) {
-        ObjectNode payload = object(); context.attributes().forEach(payload::set);
+        ObjectNode payload = object();
         payload.put("tenant", config.tenant()).put("appInstanceId", config.appId()).put("documentId", context.documentId()).put("documentType", context.documentType())
-                .put("createdBy", context.createdBy()).put("createdAt", PlatformTimestamp.localDateTime(Instant.now()));
-        if (context.initialAttachment() != null) {
-            AttachmentMetadata file = context.initialAttachment();
-            payload.put("initial_attachmentId", file.id()).put("initial_fileName", file.fileName()).put("initial_contentType", file.contentType())
-                    .put("initial_size", file.size()).put("initial_storageReference", file.storageReference().value());
-            if (file.uploadedAt() != null) payload.put("initial_uploadedAt", PlatformTimestamp.localDateTime(file.uploadedAt()));
-            payload.put("creationKey", context.creationKey()).put("creationHash", context.creationHash());
-        }
+                .put("createdBy", context.createdBy()).put("createdAt", PlatformTimestamp.localDateTime(Instant.now()))
+                .put("id", detailsId(context.documentType(), context.documentId(), auth));
+        for (JsonNode field : list(bindings.workflow(context.documentType()).path("externalFields")))
+            payload.set(text(field), context.attributes().get(text(field)));
         ObjectNode external = object("documentId", context.documentId(), "documentType", context.documentType(), "tenant", config.tenant(), "appInstanceId", config.appId());
         for (JsonNode field : list(bindings.workflow(context.documentType()).path("externalFields"))) external.set(text(field), context.attributes().get(text(field)));
         JsonNode result = bpm.process("/processes/" + encode(processId(context.documentType(), auth)) + ":start", object("businessKey", context.externalBusinessKey(), "payload", payload, "externalIds", external), auth);
         incident(result); return new ProcessInstance(text(result, "id"), context.documentId(), text(result, "state"));
+    }
+    private String detailsId(String type, String documentId, AuthContext auth) {
+        JsonNode storage = bindings.storage(type);
+        JsonNode page = data.query(text(storage.path("operations"), "search"),
+                object("cond", "it.documentId == '" + documentId.replace("'", "''") + "'", "offset", 0, "limit", 2), auth)
+                .path("searchDocument");
+        return list(page.path("elems")).stream()
+                .filter(row -> documentId.equals(text(row, "documentId")))
+                .filter(row -> type.equals(text(row.path("documentType"), "id")))
+                .map(row -> text(row.path(text(storage, "details")), "id"))
+                .filter(value -> !value.isEmpty())
+                .findFirst()
+                .orElseThrow(() -> new ApiException(502, "Не найдены реквизиты сохранённого документа"));
     }
     @Override public ProcessInstance process(String id, AuthContext auth) {
         JsonNode result = bpm.process("/instances/" + encode(id), null, auth); incident(result); return new ProcessInstance(text(result, "id"), text(result, "businessKey"), text(result, "state"));

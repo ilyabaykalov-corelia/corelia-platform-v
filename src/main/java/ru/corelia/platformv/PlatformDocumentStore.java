@@ -32,6 +32,7 @@ public final class PlatformDocumentStore implements DocumentStore {
     public void create(DocumentCreation creation, AuthContext auth) {
         String type = creation.typeCode();
         types.requireType(type);
+        requirePublishedDocumentType(type, auth);
         String operation = text(bindings.storage(type).path("operations"), creation.initialAttachment() == null ? "create" : "createWithAttachment");
         if (operation.isEmpty()) throw new ApiException(500, "Для вида документа не настроена операция создания");
         var document = object("documentId", creation.documentId(), "documentType", type,
@@ -44,6 +45,17 @@ public final class PlatformDocumentStore implements DocumentStore {
                         "requestHash", creation.requestHash(), "response", "{}"));
         if (creation.initialAttachment() != null) variables.set("file", attachment(creation.initialAttachment()));
         data.query(operation, variables, auth);
+    }
+
+    /** Проверяет справочник до записи, чтобы не получать неинформативную ошибку внешнего ключа DataSpace. */
+    private void requirePublishedDocumentType(String type, AuthContext auth) {
+        boolean published = list(data.query("refDocumentTypeListGet", object(), auth)
+                        .path("searchDocumentType").path("elems"))
+                .stream().anyMatch(item -> type.equals(text(item, "id")));
+        if (!published) {
+            throw new ApiException(503, "В DataSpace не опубликован вид документа " + type
+                    + ". Выполните bootstrap справочников Platform V перед созданием документов.");
+        }
     }
 
     @Override

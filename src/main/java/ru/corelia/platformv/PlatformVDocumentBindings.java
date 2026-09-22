@@ -27,11 +27,23 @@ public final class PlatformVDocumentBindings {
         if (!"platform-v".equals(storage.path("provider").asString()) || !storage.path("entity").isTextual()
                 || !storage.path("details").isTextual() || !storage.path("operations").isObject()
                 || !storage.path("fields").isObject()) throw new ConfigurationException("Некорректный Platform V storage binding: " + type);
-        for (JsonNode operation : storage.path("operations")) {
-            if (!operation.isTextual() || !operations.contains(operation.asString()))
-                throw new ConfigurationException("Неизвестная Platform V операция: " + type);
+        for (String name : java.util.List.of("search", "update")) {
+            JsonNode operation = storage.path("operations").path(name);
+            if (!operation.isTextual() || operation.asString().isBlank() || !operations.contains(operation.asString()))
+                throw new ConfigurationException("Не задана Platform V операция " + name + ": " + type);
         }
-        if (!binding.path("workflow").isObject()) throw new ConfigurationException("Некорректный Platform V workflow binding: " + type);
+        JsonNode workflow = binding.path("workflow");
+        if (!workflow.isObject()) throw new ConfigurationException("Некорректный Platform V workflow binding: " + type);
+        if (!"configuration".equals(workflow.path("creationSource").asString())
+                || !workflow.path("creationAction").isTextual()
+                || !workflow.path("actions").isObject()
+                || !workflow.path("processes").isObject())
+            throw new ConfigurationException("Не задан workflow process binding: " + type);
+        String action = workflow.path("creationAction").asString();
+        String process = workflow.path("actions").path(action).asString(action);
+        if (process.isBlank() || !workflow.path("processes").path(process).isTextual()
+                || workflow.path("processes").path(process).asString().isBlank())
+            throw new ConfigurationException("Не задан workflow process: " + type);
         return binding;
     }
 }
