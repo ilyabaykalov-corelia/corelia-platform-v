@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.*;
 import org.springframework.stereotype.Component;
 import ru.corelia.auth.AuthContext;
+import ru.corelia.configuration.ConfigurationException;
 import ru.corelia.configuration.DocumentTypeCatalog;
 import ru.corelia.http.ApiException;
 import ru.corelia.provider.WorkflowProvider;
@@ -41,7 +42,14 @@ public final class PlatformWorkflowProvider implements WorkflowProvider {
     }
     private String processId(String type, AuthContext auth) {
         JsonNode workflow = bindings.workflow(type);
-        if (text(workflow, "creationSource").equals("configuration")) return text(workflow.path("processes"), text(workflow.path("actions"), text(workflow, "creationAction")));
+        if (text(workflow, "creationSource").equals("configuration")) {
+            String action = text(workflow, "creationAction");
+            String process = text(workflow.path("actions"), action);
+            if (process.isEmpty()) process = action;
+            String id = text(workflow.path("processes"), process);
+            if (!id.isEmpty()) return id;
+            throw new ConfigurationException("Не задан процесс создания в конфигурации: " + type);
+        }
         for (int offset = 0; ; offset += 500) {
             JsonNode page = data.query("searchDocumentProcessSettings", object("offset", offset, "limit", 500), auth).path("searchDocumentProcessSettings");
             for (JsonNode row : list(page.path("elems"))) if (row.path("enabled").asBoolean() && type.equals(text(row.path("documentType"), "id"))) {
