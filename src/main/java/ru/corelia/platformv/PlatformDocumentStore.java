@@ -8,8 +8,6 @@ import org.springframework.stereotype.Component;
 import ru.corelia.auth.AuthContext;
 import ru.corelia.configuration.DocumentTypeCatalog;
 import ru.corelia.http.ApiException;
-import ru.corelia.integration.DataSpaceClient;
-import ru.corelia.integration.DocumentProjection;
 import ru.corelia.provider.DocumentStore;
 import ru.corelia.provider.model.DocumentSearchRequest;
 import ru.corelia.provider.model.DocumentSearchResult;

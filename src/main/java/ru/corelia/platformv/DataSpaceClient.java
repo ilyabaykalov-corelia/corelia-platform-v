@@ -1,4 +1,4 @@
-package ru.corelia.integration;
+package ru.corelia.platformv;
 
 import static ru.corelia.support.Json.*;
 

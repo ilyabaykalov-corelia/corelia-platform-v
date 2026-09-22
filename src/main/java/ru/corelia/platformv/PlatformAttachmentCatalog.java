@@ -7,7 +7,6 @@ import java.util.*;
 import org.springframework.stereotype.Component;
 import ru.corelia.auth.AuthContext;
 import ru.corelia.http.ApiException;
-import ru.corelia.integration.DataSpaceClient;
 import ru.corelia.provider.AttachmentCatalog;
 import ru.corelia.provider.model.AttachmentMetadata;
 import ru.corelia.provider.model.StorageReference;

@@ -5,7 +5,6 @@ import static ru.corelia.support.Json.*;
 import java.util.List;
 import org.springframework.stereotype.Component;
 import ru.corelia.auth.AuthContext;
-import ru.corelia.integration.DataSpaceClient;
 import ru.corelia.provider.DocumentTypeProvider;
 import ru.corelia.provider.model.AvailableDocumentType;
 

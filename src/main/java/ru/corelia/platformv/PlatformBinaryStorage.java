@@ -3,7 +3,6 @@ package ru.corelia.platformv;
 import java.io.InputStream;
 import org.springframework.stereotype.Component;
 import ru.corelia.auth.AuthContext;
-import ru.corelia.integration.FileStorageClient;
 import ru.corelia.provider.BinaryStorage;
 import ru.corelia.provider.model.BinaryStoreRequest;
 import ru.corelia.provider.model.StorageReference;
