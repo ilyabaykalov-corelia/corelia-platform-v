@@ -38,7 +38,7 @@ public final class PlatformWorkflowProvider implements WorkflowProvider {
         JsonNode result = bpm.process("/processes/" + encode(processId(context.documentType(), auth)) + ":start", object("businessKey", context.externalBusinessKey(), "payload", payload, "externalIds", external), auth);
         incident(result); return new ProcessInstance(text(result, "id"), context.documentId(), text(result, "state"));
     }
-    @Override public ProcessInstance get(String id, AuthContext auth) {
+    @Override public ProcessInstance process(String id, AuthContext auth) {
         JsonNode result = bpm.process("/instances/" + encode(id), null, auth); incident(result); return new ProcessInstance(text(result, "id"), text(result, "businessKey"), text(result, "state"));
     }
     private String processId(String type, AuthContext auth) {

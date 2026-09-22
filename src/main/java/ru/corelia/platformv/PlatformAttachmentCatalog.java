@@ -21,7 +21,7 @@ public final class PlatformAttachmentCatalog implements AttachmentCatalog {
     @Override public AttachmentMetadata find(String id, AuthContext auth) {
         return all(auth).stream().filter(value -> id.equals(first(value, "attachmentId", "id"))).findFirst().map(this::attachment).orElseThrow(() -> new ApiException(404, "Вложение не найдено"));
     }
-    @Override public List<AttachmentMetadata> versions(String id, AuthContext auth) {
+    @Override public List<AttachmentMetadata> attachmentVersions(String id, AuthContext auth) {
         AttachmentMetadata current = find(id, auth); return all(auth).stream().map(this::attachment).filter(value -> current.documentId().equals(value.documentId()) && current.logicalId().equals(value.logicalId())).toList();
     }
     private List<JsonNode> all(AuthContext auth) { var result = new ArrayList<JsonNode>(); for (int offset = 0; ; offset += 500) { JsonNode page = data.query("searchAttachment", object("offset", offset, "limit", 500), auth).path("searchAttachment"); List<JsonNode> batch = list(page.path("elems")); result.addAll(batch); if (offset + batch.size() >= number(page, "count", offset + batch.size())) return result; if (batch.isEmpty()) throw new ApiException(502, "Неполная выборка вложений"); } }

@@ -30,7 +30,7 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
                 .orElseThrow(() -> new ApiException(404, "Документ не найден"));
     }
 
-    @Override public List<DocumentVersion> versions(String documentId, AuthContext auth) {
+    @Override public List<DocumentVersion> documentVersions(String documentId, AuthContext auth) {
         return search("searchDocumentVersion", "documentId", documentId, auth).stream()
                 .filter(value -> documentId.equals(text(value, "documentId"))).map(this::version).toList();
     }
@@ -41,7 +41,7 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
     }
 
     @Override public DocumentVersionState state(String type, String documentId, AuthContext auth) {
-        List<DocumentVersion> versions = versions(documentId, auth);
+        List<DocumentVersion> versions = documentVersions(documentId, auth);
         DocumentVersion current = versions.stream().max(Comparator.comparingInt(DocumentVersion::number)).orElse(null);
         return new DocumentVersionState(documents.get(type, documentId, auth), current, versions, attachments(documentId, auth));
     }

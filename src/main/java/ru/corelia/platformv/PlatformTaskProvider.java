@@ -36,7 +36,7 @@ public final class PlatformTaskProvider implements TaskProvider {
             for (JsonNode task : items(response)) { WorkflowTask mapped = task(task, auth); if (documentId.equals(mapped.documentId()) && Set.of("NEW", "ASSIGNED", "STARTED").contains(mapped.status())) result.putIfAbsent(mapped.id(), mapped); }
         return new ArrayList<>(result.values());
     }
-    @Override public WorkflowTask get(String id, AuthContext auth) {
+    @Override public WorkflowTask task(String id, AuthContext auth) {
         try { return task(bpm.taskList("/system/v1/user-tasks/" + encode(id), null, Map.of(), auth), auth); }
         catch (ApiException error) { if (!BpmClient.unavailable(error)) throw error; }
         return search(new TaskSearchRequest(Set.of("NEW", "ASSIGNED", "STARTED")), auth).stream().filter(task -> id.equals(task.id())).findFirst().orElse(null);
