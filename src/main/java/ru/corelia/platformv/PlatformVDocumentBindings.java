@@ -9,9 +9,11 @@ import tools.jackson.databind.JsonNode;
 @Component
 public final class PlatformVDocumentBindings {
     private final ConfigurationLoader.LoadedConfiguration configuration;
+    private final PlatformVOperationCatalog operations;
 
-    public PlatformVDocumentBindings(ConfigurationLoader.LoadedConfiguration configuration) {
+    public PlatformVDocumentBindings(ConfigurationLoader.LoadedConfiguration configuration, PlatformVOperationCatalog operations) {
         this.configuration = configuration;
+        this.operations = operations;
         configuration.documentTypes().all().forEach(type -> binding(type.id()));
     }
 
@@ -26,7 +28,7 @@ public final class PlatformVDocumentBindings {
                 || !storage.path("details").isTextual() || !storage.path("operations").isObject()
                 || !storage.path("fields").isObject()) throw new ConfigurationException("Некорректный Platform V storage binding: " + type);
         for (JsonNode operation : storage.path("operations")) {
-            if (!operation.isTextual() || !configuration.operations().containsKey(operation.asString()))
+            if (!operation.isTextual() || !operations.contains(operation.asString()))
                 throw new ConfigurationException("Неизвестная Platform V операция: " + type);
         }
         if (!binding.path("workflow").isObject()) throw new ConfigurationException("Некорректный Platform V workflow binding: " + type);

@@ -20,23 +20,22 @@ public class DataSpaceClient {
     private static final java.util.regex.Pattern OPERATION =
             java.util.regex.Pattern.compile(
                     "^(?:query|mutation)\\s+([_A-Za-z][_0-9A-Za-z]*)(?=[\\s({])");
-    private final java.util.Map<String, ru.corelia.configuration.ConfigurationLoader.Operation> operations;
+    private final PlatformVOperationCatalog operations;
 
-    public DataSpaceClient(PlatformVConfig config, PlatformHttp http, ru.corelia.configuration.ConfigurationLoader.LoadedConfiguration configuration) {
-        this.operations = configuration.operations();
+    public DataSpaceClient(PlatformVConfig config, PlatformHttp http, PlatformVOperationCatalog operations) {
+        this.operations = operations;
         for (String name : java.util.List.of("searchDocument", "searchDocumentVersion", "searchDocumentCommand", "searchAttachment",
                 "initializeDocumentVersion", "commitDocumentNoChange", "commitDocumentFileUpload", "commitDocumentFileReplace",
                 "commitDocumentFileDelete", "searchDocumentProcessSettings", "refDocumentTypeListGet")) {
-            if (!operations.containsKey(name)) throw new ru.corelia.configuration.ConfigurationException("Missing Platform V operation: " + name);
-            if (name.startsWith("commit") && !operations.get(name).multiaggregate()) throw new ru.corelia.configuration.ConfigurationException("Version commits require multiaggregate: " + name);
+            if (!operations.contains(name)) throw new ru.corelia.configuration.ConfigurationException("Missing Platform V operation: " + name);
+            if (name.startsWith("commit") && !operations.require(name).multiaggregate()) throw new ru.corelia.configuration.ConfigurationException("Version commits require multiaggregate: " + name);
         }
         this.config = config;
         this.http = http;
     }
 
     public JsonNode query(String name, JsonNode variables, AuthContext auth) {
-        var operation = operations.get(name);
-        if (operation == null) throw new IllegalStateException("Не зарегистрирована GraphQL-операция " + name);
+        var operation = operations.require(name);
         return execute(operation.text(), variables, auth, operation.multiaggregate());
     }
 
