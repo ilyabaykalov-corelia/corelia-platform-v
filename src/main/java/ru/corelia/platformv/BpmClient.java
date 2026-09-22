@@ -246,11 +246,25 @@ public class BpmClient {
         ObjectNode snapshot = object();
         for (String field : List.of("id", "state", "status", "isIncident"))
             if (result.has(field)) snapshot.set(field, result.path(field));
-        if (result.path("currentActivities").isArray())
+        if (result.path("currentActivities").isArray()) {
             snapshot.put("activityCount", result.path("currentActivities").size());
+            list(result.path("currentActivities")).stream()
+                    .filter(activity -> activity.path("isIncident").asBoolean())
+                    .findFirst()
+                    .ifPresent(activity -> {
+                        snapshot.put("incidentActivity", first(activity, "definitionId", "name"));
+                        String error = text(activity, "error");
+                        if (!error.isEmpty()) snapshot.put("incidentError", compact(error));
+                    });
+        }
         if (result.path("globalVariables").isObject())
             snapshot.put("globalVariableCount", result.path("globalVariables").size());
         return snapshot;
+    }
+
+    private static String compact(String value) {
+        String result = value.replaceAll("\\s+", " ").trim();
+        return result.length() <= 500 ? result : result.substring(0, 500) + "…";
     }
 
     private static ObjectNode responseSummary(JsonNode result) {
