@@ -10,7 +10,9 @@ import ru.corelia.http.ApiException;
 import ru.corelia.provider.DocumentStore;
 import ru.corelia.provider.model.DocumentSearchRequest;
 import ru.corelia.provider.model.DocumentSearchResult;
+import ru.corelia.provider.model.DocumentCreation;
 import ru.corelia.provider.model.DocumentSnapshot;
+import ru.corelia.provider.model.AttachmentMetadata;
 import tools.jackson.databind.JsonNode;
 
 /** Адаптер Platform V, преобразующий документы DataSpace в канонический снимок Corelia. */
@@ -24,6 +26,24 @@ public final class PlatformDocumentStore implements DocumentStore {
         this.types = types;
         this.data = data;
         this.bindings = bindings;
+    }
+
+    @Override
+    public void create(DocumentCreation creation, AuthContext auth) {
+        String type = creation.typeCode();
+        types.requireType(type);
+        String operation = text(bindings.storage(type).path("operations"), creation.initialAttachment() == null ? "create" : "createWithAttachment");
+        if (operation.isEmpty()) throw new ApiException(500, "Для вида документа не настроена операция создания");
+        var document = object("documentId", creation.documentId(), "documentType", type,
+                "createdBy", creation.createdBy(), "createdAt", PlatformTimestamp.localDateTime(creation.createdAt()));
+        var input = object("document", "ref:createDocument", "status", creation.status());
+        JsonNode mapping = bindings.storage(type).path("fields");
+        creation.attributes().forEach((field, value) -> input.set(text(mapping, field), value));
+        var variables = object("document", document, "input", input,
+                "command", object("document", "ref:createDocument", "commandKey", creation.idempotencyKey(),
+                        "requestHash", creation.requestHash(), "response", "{}"));
+        if (creation.initialAttachment() != null) variables.set("file", attachment(creation.initialAttachment()));
+        data.query(operation, variables, auth);
     }
 
     @Override
@@ -71,5 +91,13 @@ public final class PlatformDocumentStore implements DocumentStore {
 
     private static String condition(String field, String value) {
         return "it." + field + " == '" + value.replace("'", "''") + "'";
+    }
+
+    private static tools.jackson.databind.node.ObjectNode attachment(AttachmentMetadata value) {
+        var result = object("attachmentId", value.id(), "logicalAttachmentId", value.logicalId(), "documentId", value.documentId(),
+                "fileName", value.fileName(), "contentType", value.contentType(), "size", value.size(), "version", value.version(),
+                "current", value.current(), "storageReference", value.storageReference().value());
+        if (value.uploadedAt() != null) result.put("uploadedAt", PlatformTimestamp.localDateTime(value.uploadedAt()));
+        return result;
     }
 }
