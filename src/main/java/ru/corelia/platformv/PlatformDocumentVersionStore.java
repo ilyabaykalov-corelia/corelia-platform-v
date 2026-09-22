@@ -51,7 +51,14 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
     }
 
     @Override public void commit(DocumentMutation mutation, AuthContext auth) {
+        if (receipt(mutation.idempotencyKey(), auth) != null) return;
         JsonNode document = rawDocument(mutation.documentType(), mutation.documentId(), auth);
+        int currentVersion = document.path("version").asInt();
+        String currentToken = text(document, "changeToken");
+        if (currentVersion != mutation.expectedVersion()
+                || (mutation.expectedChangeToken() != null && !mutation.expectedChangeToken().isBlank()
+                && !mutation.expectedChangeToken().equals(currentToken)))
+            throw new ApiException(409, "Документ был изменен конкурентно");
         String token = text(mutation.response(), "changeToken"); if (token.isEmpty()) token = UUID.randomUUID().toString();
         var update = object("id", text(document, "id"), "version", mutation.createdVersion() == null ? mutation.expectedVersion() : mutation.createdVersion().number(),
                 "changeToken", token);
