@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.json.JsonMapper;
 import java.nio.file.*;
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PlatformVConfigurationCompilerTest {
@@ -18,6 +19,11 @@ class PlatformVConfigurationCompilerTest {
         assertEquals(
                 JsonMapper.builder().build().readTree(Files.readString(source.resolve("configuration.json"))).path("compatibility"),
                 JsonMapper.builder().build().readTree(Files.readString(output.resolve("corelia/configuration.json"))).path("compatibility"));
+        var compiled = new ru.corelia.configuration.ConfigurationLoader().load(output.resolve("corelia"), "0.1.0");
+        for (String type : List.of("PDS_CONTRACT", "KID_OPS")) {
+            assertTrue(compiled.providerBindings().get(type).path("storage").isObject(), type);
+            assertTrue(compiled.providerBindings().get(type).path("workflow").isObject(), type);
+        }
         var json = JsonMapper.builder().build();
         var permissions = json.readTree(Files.readString(output.resolve("platform-v/graphql-permissions.fragment.json")));
         var original = json.readTree(Files.readString(Path.of("../../sber-npf-platform-v/model.graphql-permissions.json")));

@@ -87,6 +87,9 @@ public final class PlatformVConfigurationCompiler {
             for (ru.corelia.configuration.DocumentTypeDefinition definition : loaded.documentTypes().all()) {
                 String filename = kebab(definition.id()) + ".json";
                 ObjectNode entity = (ObjectNode) definition.definition();
+                JsonNode binding = loaded.providerBindings().get(definition.id());
+                entity.set("storage", binding.path("storage").deepCopy());
+                entity.set("workflow", binding.path("workflow").deepCopy());
                 entity.remove("ui"); entity.remove("authorization");
                 Files.writeString(entities.resolve(filename), JSON.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
                 ObjectNode uiFragment = JSON.createObjectNode().put("id", definition.id()); uiFragment.set("ui", definition.ui());
