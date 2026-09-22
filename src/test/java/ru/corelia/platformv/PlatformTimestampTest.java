@@ -20,7 +20,7 @@ class PlatformTimestampTest {
     }
 
     @Test void writesUtcInstantAsDataspaceLocalDateTime() {
-        assertEquals("2026-09-22T12:34:56.789", PlatformTimestamp.localDateTime(Instant.parse("2026-09-22T12:34:56.789Z")));
+        assertEquals("2026-09-22T12:34:56.789", PlatformTimestamp.localDateTime(Instant.parse("2026-09-22T12:34:56.789123456Z")));
     }
 
     @Test void keepsMissingAndInvalidValuesAbsent() {

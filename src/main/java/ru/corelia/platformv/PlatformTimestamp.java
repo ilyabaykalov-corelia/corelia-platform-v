@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 
 /** Преобразует временные значения DataSpace в канонический момент времени. */
 final class PlatformTimestamp {
@@ -29,6 +30,6 @@ final class PlatformTimestamp {
 
     /** Представление UTC для полей DataSpace типа LOCALDATETIME. */
     static String localDateTime(Instant value) {
-        return LocalDateTime.ofInstant(value, ZoneOffset.UTC).toString();
+        return LocalDateTime.ofInstant(value.truncatedTo(ChronoUnit.MILLIS), ZoneOffset.UTC).toString();
     }
 }
