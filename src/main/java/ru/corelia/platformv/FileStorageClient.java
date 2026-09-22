@@ -60,7 +60,7 @@ public class FileStorageClient {
             InputStream content,
             long size,
             AuthContext auth) {
-        String boundary = "SberNpf" + UUID.randomUUID().toString().replace("-", "");
+        String boundary = "Corelia" + UUID.randomUUID().toString().replace("-", "");
         byte[] prefix = bytes(
                 "--"
                         + boundary
