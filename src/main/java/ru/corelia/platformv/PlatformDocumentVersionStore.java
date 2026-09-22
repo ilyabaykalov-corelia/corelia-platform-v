@@ -77,9 +77,9 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
             String type = mutation.documentType(); operation = text(bindings.storage(type).path("operations"), "update");
             var details = mappedAttributes(type, mutation.attributes()); details.put("id", text(document, "detailsId")); vars.set("details", details);
             vars.set("detailsCompare", mappedAttributes(type, attributes(document.path("attributes")))); vars.set("version", version(mutation.createdVersion(), text(document, "id")));
-            vars.set("previous", object("id", mutation.closedVersion().id(), "closedAt", timestamp(mutation.closedVersion().closedAt())));
+            vars.set("previous", closedVersion(mutation.closedVersion()));
         } else if (mutation.closedVersion() != null) {
-            vars.set("previous", version(mutation.closedVersion()));
+            vars.set("previous", attachmentManifest(mutation.closedVersion()));
             if (mutation.createdAttachment() != null) {
                 vars.set("file", attachment(mutation.createdAttachment())); operation = mutation.retiredAttachment() == null ? "commitDocumentFileUpload" : "commitDocumentFileReplace";
             } else {
@@ -117,8 +117,21 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
     private static tools.jackson.databind.node.ObjectNode version(DocumentVersion value) {
         var result = object("documentId", value.documentId(), "version", value.number(), "schemaVersion", value.schemaVersion(),
                 "attributes", write(attributes(value.attributes())), "attachments", write(value.attachments().stream().map(PlatformDocumentVersionStore::attachment).toList()),
-                "createdBy", value.createdBy(), "createdAt", timestamp(value.createdAt()));
+                "createdBy", value.createdBy());
+        if (value.createdAt() != null) result.put("createdAt", timestamp(value.createdAt()));
         if (!value.id().isEmpty()) result.put("id", value.id()); if (value.closedAt() != null) result.put("closedAt", timestamp(value.closedAt())); return result;
+    }
+
+    private static tools.jackson.databind.node.ObjectNode closedVersion(DocumentVersion value) {
+        var result = object("id", value.id());
+        if (value.closedAt() != null) result.put("closedAt", timestamp(value.closedAt()));
+        return result;
+    }
+
+    private static tools.jackson.databind.node.ObjectNode attachmentManifest(DocumentVersion value) {
+        var result = object("id", value.id(), "attachments", write(value.attachments().stream().map(PlatformDocumentVersionStore::attachment).toList()));
+        if (value.closedAt() != null) result.put("closedAt", timestamp(value.closedAt()));
+        return result;
     }
     private static tools.jackson.databind.node.ObjectNode version(DocumentVersion value, String document) {
         return version(value).put("document", document);
