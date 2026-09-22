@@ -48,7 +48,8 @@ public final class PlatformTaskProvider implements TaskProvider {
     private JsonNode search(String status, String scope, AuthContext auth) { var filters = object(); if (!status.isEmpty()) filters.set("status", object("value", status)); return bpm.taskList("/system/v2/tasks:search", filters, Map.of("attributes", "*", "limit", 100, "offset", 0, "scope", scope), auth); }
     private WorkflowTask task(JsonNode raw, AuthContext auth) {
         String id = text(raw, "id"), type = attribute(raw, "documentType"), document = attribute(raw, "documentId"); if (type.isEmpty() && !document.isEmpty()) type = documentType(document, auth); JsonNode detail = details(raw, auth); List<WorkflowAction> actions = actions(type, detail);
-        return new WorkflowTask(id, document, type, text(raw, "status"), login(raw), name(raw), role(raw), fallback(text(raw, "title"), text(raw, "type")), text(raw, "description"), map(raw.path("attributes")), actions);
+        String status = TaskStatus.fromProvider(text(raw, "status")).name();
+        return new WorkflowTask(id, document, type, status, login(raw), name(raw), role(raw), fallback(text(raw, "title"), text(raw, "type")), text(raw, "description"), map(raw.path("attributes")), actions);
     }
     private String documentType(String documentId, AuthContext auth) { return list(data.query("searchDocument", object("cond", "it.documentId == '" + documentId.replace("'", "''") + "'", "offset", 0, "limit", 2), auth).path("searchDocument").path("elems")).stream().filter(value -> documentId.equals(text(value, "documentId"))).map(value -> text(value.path("documentType"), "id")).findFirst().orElse(""); }
     private JsonNode details(JsonNode task, AuthContext auth) {
