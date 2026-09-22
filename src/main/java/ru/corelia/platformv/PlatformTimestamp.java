@@ -26,4 +26,9 @@ final class PlatformTimestamp {
             }
         }
     }
+
+    /** Представление UTC для полей DataSpace типа LOCALDATETIME. */
+    static String localDateTime(Instant value) {
+        return LocalDateTime.ofInstant(value, ZoneOffset.UTC).toString();
+    }
 }

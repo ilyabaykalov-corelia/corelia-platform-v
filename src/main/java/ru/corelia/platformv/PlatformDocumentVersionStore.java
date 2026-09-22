@@ -143,7 +143,7 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
         if (value.uploadedAt() != null) result.put("uploadedAt", timestamp(value.uploadedAt())); return result;
     }
     private static tools.jackson.databind.node.ObjectNode attributes(Map<String, JsonNode> values) { var result = object(); values.forEach(result::set); return result; }
-    private static String timestamp(Instant value) { return value == null ? "" : value.toString(); }
+    private static String timestamp(Instant value) { return value == null ? "" : PlatformTimestamp.localDateTime(value); }
 
     private List<JsonNode> search(String operation, String field, String value, AuthContext auth) {
         var result = new ArrayList<JsonNode>();

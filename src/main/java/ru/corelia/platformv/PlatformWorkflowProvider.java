@@ -23,12 +23,12 @@ public final class PlatformWorkflowProvider implements WorkflowProvider {
     @Override public ProcessInstance start(WorkflowContext context, AuthContext auth) {
         ObjectNode payload = object(); context.attributes().forEach(payload::set);
         payload.put("tenant", config.tenant()).put("appInstanceId", config.appId()).put("documentId", context.documentId()).put("documentType", context.documentType())
-                .put("createdBy", context.createdBy()).put("createdAt", Instant.now().toString());
+                .put("createdBy", context.createdBy()).put("createdAt", PlatformTimestamp.localDateTime(Instant.now()));
         if (context.initialAttachment() != null) {
             AttachmentMetadata file = context.initialAttachment();
             payload.put("initial_attachmentId", file.id()).put("initial_fileName", file.fileName()).put("initial_contentType", file.contentType())
                     .put("initial_size", file.size()).put("initial_storageReference", file.storageReference().value());
-            if (file.uploadedAt() != null) payload.put("initial_uploadedAt", file.uploadedAt().toString());
+            if (file.uploadedAt() != null) payload.put("initial_uploadedAt", PlatformTimestamp.localDateTime(file.uploadedAt()));
             payload.put("creationKey", context.creationKey()).put("creationHash", context.creationHash());
         }
         ObjectNode external = object("documentId", context.documentId(), "documentType", context.documentType(), "tenant", config.tenant(), "appInstanceId", config.appId());
