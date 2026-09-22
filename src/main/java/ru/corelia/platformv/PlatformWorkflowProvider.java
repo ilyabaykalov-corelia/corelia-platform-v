@@ -18,8 +18,8 @@ import tools.jackson.databind.node.ObjectNode;
 /** Platform V реализация запуска и чтения процессов Corelia. */
 @Component
 public final class PlatformWorkflowProvider implements WorkflowProvider {
-    private final BpmClient bpm; private final DataSpaceClient data; private final PlatformVConfig config; private final DocumentTypeCatalog types;
-    public PlatformWorkflowProvider(BpmClient bpm, DataSpaceClient data, PlatformVConfig config, DocumentTypeCatalog types) { this.bpm = bpm; this.data = data; this.config = config; this.types = types; }
+    private final BpmClient bpm; private final DataSpaceClient data; private final PlatformVConfig config; private final DocumentTypeCatalog types; private final PlatformVDocumentBindings bindings;
+    public PlatformWorkflowProvider(BpmClient bpm, DataSpaceClient data, PlatformVConfig config, DocumentTypeCatalog types, PlatformVDocumentBindings bindings) { this.bpm = bpm; this.data = data; this.config = config; this.types = types; this.bindings = bindings; }
     @Override public ProcessInstance start(WorkflowContext context, AuthContext auth) {
         ObjectNode payload = object(); context.attributes().forEach(payload::set);
         payload.put("tenant", config.tenant()).put("appInstanceId", config.appId()).put("documentId", context.documentId()).put("documentType", context.documentType())
@@ -32,7 +32,7 @@ public final class PlatformWorkflowProvider implements WorkflowProvider {
             payload.put("creationKey", context.creationKey()).put("creationHash", context.creationHash());
         }
         ObjectNode external = object("documentId", context.documentId(), "documentType", context.documentType(), "tenant", config.tenant(), "appInstanceId", config.appId());
-        for (JsonNode field : list(types.definition(context.documentType()).workflow().path("externalFields"))) external.set(text(field), context.attributes().get(text(field)));
+        for (JsonNode field : list(bindings.workflow(context.documentType()).path("externalFields"))) external.set(text(field), context.attributes().get(text(field)));
         JsonNode result = bpm.process("/processes/" + encode(processId(context.documentType(), auth)) + ":start", object("businessKey", context.externalBusinessKey(), "payload", payload, "externalIds", external), auth);
         incident(result); return new ProcessInstance(text(result, "id"), context.documentId(), text(result, "state"));
     }
@@ -40,7 +40,7 @@ public final class PlatformWorkflowProvider implements WorkflowProvider {
         JsonNode result = bpm.process("/instances/" + encode(id), null, auth); incident(result); return new ProcessInstance(text(result, "id"), text(result, "businessKey"), text(result, "state"));
     }
     private String processId(String type, AuthContext auth) {
-        JsonNode workflow = types.definition(type).workflow();
+        JsonNode workflow = bindings.workflow(type);
         if (text(workflow, "creationSource").equals("configuration")) return text(workflow.path("processes"), text(workflow.path("actions"), text(workflow, "creationAction")));
         for (int offset = 0; ; offset += 500) {
             JsonNode page = data.query("searchDocumentProcessSettings", object("offset", offset, "limit", 500), auth).path("searchDocumentProcessSettings");

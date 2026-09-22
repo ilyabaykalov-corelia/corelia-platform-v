@@ -18,8 +18,9 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
     private final DataSpaceClient data;
     private final PlatformDocumentStore documents;
     private final DocumentTypeCatalog types;
-    public PlatformDocumentVersionStore(DataSpaceClient data, PlatformDocumentStore documents, DocumentTypeCatalog types) {
-        this.data = data; this.documents = documents; this.types = types;
+    private final PlatformVDocumentBindings bindings;
+    public PlatformDocumentVersionStore(DataSpaceClient data, PlatformDocumentStore documents, DocumentTypeCatalog types, PlatformVDocumentBindings bindings) {
+        this.data = data; this.documents = documents; this.types = types; this.bindings = bindings;
     }
 
     @Override public String documentType(String documentId, AuthContext auth) {
@@ -66,7 +67,7 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
         if (mutation.createdVersion() != null) {
             if (mutation.closedVersion() == null || mutation.createdAttachment() != null || mutation.retiredAttachment() != null)
                 throw new IllegalArgumentException("Некорректная транзакция атрибутов");
-            String type = mutation.documentType(); operation = text(types.definition(type).storage().path("operations"), "update");
+            String type = mutation.documentType(); operation = text(bindings.storage(type).path("operations"), "update");
             var details = mappedAttributes(type, mutation.attributes()); details.put("id", text(document, "detailsId")); vars.set("details", details);
             vars.set("detailsCompare", mappedAttributes(type, attributes(document.path("attributes")))); vars.set("version", version(mutation.createdVersion(), text(document, "id")));
             vars.set("previous", object("id", mutation.closedVersion().id(), "closedAt", timestamp(mutation.closedVersion().closedAt())));
@@ -87,10 +88,10 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
     }
 
     private JsonNode rawDocument(String type, String documentId, AuthContext auth) {
-        String operation = text(types.definition(type).storage().path("operations"), "search");
+        String operation = text(bindings.storage(type).path("operations"), "search");
         return list(data.query(operation, object("cond", "it.documentId == '" + documentId.replace("'", "''") + "'", "offset", 0, "limit", 2), auth)
                 .path("searchDocument").path("elems")).stream().filter(value -> documentId.equals(text(value, "documentId")))
-                .filter(value -> type.equals(text(value.path("documentType"), "id"))).map(value -> DocumentProjection.document(value, types))
+                .filter(value -> type.equals(text(value.path("documentType"), "id"))).map(value -> DocumentProjection.document(value, types, bindings))
                 .findFirst().orElseThrow(() -> new ApiException(404, "Документ не найден"));
     }
     private String rawAttachmentId(String documentId, String attachmentId, AuthContext auth) {
@@ -100,7 +101,7 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
     }
 
     private tools.jackson.databind.node.ObjectNode mappedAttributes(String type, Map<String, JsonNode> attributes) {
-        var result = object(); JsonNode mapping = types.definition(type).storage().path("fields");
+        var result = object(); JsonNode mapping = bindings.storage(type).path("fields");
         attributes.forEach((field, value) -> result.set(text(mapping, field), value)); return result;
     }
     private static Map<String, JsonNode> attributes(JsonNode value) {

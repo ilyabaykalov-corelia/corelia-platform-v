@@ -19,10 +19,12 @@ import tools.jackson.databind.JsonNode;
 public final class PlatformDocumentStore implements DocumentStore {
     private final DocumentTypeCatalog types;
     private final DataSpaceClient data;
+    private final PlatformVDocumentBindings bindings;
 
-    public PlatformDocumentStore(DocumentTypeCatalog types, DataSpaceClient data) {
+    public PlatformDocumentStore(DocumentTypeCatalog types, DataSpaceClient data, PlatformVDocumentBindings bindings) {
         this.types = types;
         this.data = data;
+        this.bindings = bindings;
     }
 
     @Override
@@ -31,11 +33,11 @@ public final class PlatformDocumentStore implements DocumentStore {
         types.requireType(type);
         var result = new ArrayList<DocumentSnapshot>();
         for (int offset = 0; ; ) {
-            JsonNode page = data.query(text(types.definition(type).storage().path("operations"), "search"),
+            JsonNode page = data.query(text(bindings.storage(type).path("operations"), "search"),
                     object("cond", condition("documentType.id", type), "offset", offset, "limit", 500), auth).path("searchDocument");
             List<JsonNode> rows = list(page.path("elems"));
             rows.stream().filter(row -> type.equals(text(row.path("documentType"), "id")))
-                    .map(row -> DocumentProjection.document(row, types)).map(this::snapshot).forEach(result::add);
+                    .map(row -> DocumentProjection.document(row, types, bindings)).map(this::snapshot).forEach(result::add);
             offset += rows.size();
             if (rows.isEmpty() || offset >= number(page, "count", offset)) break;
         }
@@ -47,11 +49,11 @@ public final class PlatformDocumentStore implements DocumentStore {
     @Override
     public DocumentSnapshot get(String typeCode, String documentId, AuthContext auth) {
         types.requireType(typeCode);
-        JsonNode page = data.query(text(types.definition(typeCode).storage().path("operations"), "search"),
+        JsonNode page = data.query(text(bindings.storage(typeCode).path("operations"), "search"),
                 object("cond", condition("documentId", documentId), "offset", 0, "limit", 2), auth).path("searchDocument");
         return list(page.path("elems")).stream().filter(row -> documentId.equals(text(row, "documentId")))
                 .filter(row -> typeCode.equals(text(row.path("documentType"), "id")))
-                .map(row -> DocumentProjection.document(row, types)).map(this::snapshot).findFirst()
+                .map(row -> DocumentProjection.document(row, types, bindings)).map(this::snapshot).findFirst()
                 .orElseThrow(() -> new ApiException(404, "Документ не найден"));
     }
 
