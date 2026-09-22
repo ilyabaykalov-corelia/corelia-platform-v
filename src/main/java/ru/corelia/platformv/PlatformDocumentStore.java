@@ -66,7 +66,11 @@ public final class PlatformDocumentStore implements DocumentStore {
         catch (RuntimeException ignored) { createdAt = null; }
         return new DocumentSnapshot(text(document, "documentId"), text(document.path("documentType"), "id"),
                 text(document, "status"), (int) number(document, "version", 0), attributes,
-                text(document, "createdBy"), createdAt, text(document, "changeToken"));
+                text(document, "createdBy"), createdAt, nullableText(document, "changeToken"));
+    }
+
+    private static String nullableText(JsonNode node, String field) {
+        return node.hasNonNull(field) ? text(node, field) : null;
     }
 
     private static String condition(String field, String value) {

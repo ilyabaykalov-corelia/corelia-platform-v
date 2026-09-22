@@ -54,15 +54,15 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
         if (receipt(mutation.idempotencyKey(), auth) != null) return;
         JsonNode document = rawDocument(mutation.documentType(), mutation.documentId(), auth);
         int currentVersion = document.path("version").asInt();
-        String currentToken = text(document, "changeToken");
+        String currentToken = nullableText(document, "changeToken");
         if (currentVersion != mutation.expectedVersion()
-                || (mutation.expectedChangeToken() != null && !mutation.expectedChangeToken().isBlank()
-                && !mutation.expectedChangeToken().equals(currentToken)))
+                || (mutation.expectedChangeToken() != null
+                && !Objects.equals(mutation.expectedChangeToken(), currentToken)))
             throw new ApiException(409, "Документ был изменен конкурентно");
         String token = text(mutation.response(), "changeToken"); if (token.isEmpty()) token = UUID.randomUUID().toString();
         var update = object("id", text(document, "id"), "version", mutation.createdVersion() == null ? mutation.expectedVersion() : mutation.createdVersion().number(),
                 "changeToken", token);
-        var compare = object("changeToken", text(document, "changeToken"));
+        var compare = object("changeToken", document.hasNonNull("changeToken") ? document.path("changeToken") : null);
         if (mutation.createdVersion() != null && mutation.expectedVersion() == 0) {
             data.query("initializeDocumentVersion", object("id", text(document, "id"), "token", text(update, "changeToken"), "compare", compare,
                     "version", version(mutation.createdVersion(), text(document, "id"))), auth);
@@ -166,4 +166,5 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
     }
 
     private static Instant instant(String value) { try { return value.isBlank() ? null : Instant.parse(value); } catch (RuntimeException ignored) { return null; } }
+    private static String nullableText(JsonNode node, String field) { return node.hasNonNull(field) ? text(node, field) : null; }
 }
