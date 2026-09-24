@@ -1,10 +1,11 @@
-package ru.corelia.integration;
+package ru.corelia.platformv;
 
 import static ru.corelia.support.Json.*;
 import org.springframework.stereotype.Component;
 import ru.corelia.auth.AuthContext;
 import ru.corelia.auth.PermissionChecker;
-import ru.corelia.config.CoreliaConfig;
+import ru.corelia.provider.PermissionProvider;
+import ru.corelia.platformv.PlatformVConfig;
 import ru.corelia.configuration.ConfigurationException;
 import ru.corelia.configuration.ConfigurationLoader;
 import ru.corelia.http.ApiException;
@@ -15,18 +16,18 @@ import java.nio.file.*;
 import java.io.IOException;
 import java.util.*;
 
-/** Read-only preflight using the same ac.json deployed to Platform V; mutations retain platform JWT checks. */
+/** Проверяет права по тому же ac.json, который поставляется для Platform V. */
 @Component
-public final class PlatformVPermissionChecker implements PermissionChecker {
+public final class PlatformVPermissionChecker implements PermissionChecker, PermissionProvider {
     private final Map<String, Set<String>> permissions;
     @org.springframework.beans.factory.annotation.Autowired
-    public PlatformVPermissionChecker(CoreliaConfig environment, ConfigurationLoader.LoadedConfiguration configuration) {
+    public PlatformVPermissionChecker(PlatformVConfig environment, ConfigurationLoader.LoadedConfiguration configuration) {
         this(readAccess(environment), configuration);
     }
     public static PlatformVPermissionChecker fromText(String text, ConfigurationLoader.LoadedConfiguration configuration) {
         return new PlatformVPermissionChecker(text, configuration);
     }
-    private static String readAccess(CoreliaConfig environment) {
+    private static String readAccess(PlatformVConfig environment) {
         String override = environment.value("CORELIA_PLATFORM_V_AC_PATH");
         Path file = override.isBlank()
             ? Path.of(environment.value("CORELIA_CONFIG_PATH"), "platform-v-ac.json") : Path.of(override);

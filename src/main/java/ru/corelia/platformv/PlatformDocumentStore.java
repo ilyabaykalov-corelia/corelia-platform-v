@@ -1,0 +1,115 @@
+package ru.corelia.platformv;
+
+import static ru.corelia.support.Json.*;
+
+import java.util.*;
+import org.springframework.stereotype.Component;
+import ru.corelia.auth.AuthContext;
+import ru.corelia.configuration.DocumentTypeCatalog;
+import ru.corelia.http.ApiException;
+import ru.corelia.provider.DocumentStore;
+import ru.corelia.provider.model.DocumentSearchRequest;
+import ru.corelia.provider.model.DocumentSearchResult;
+import ru.corelia.provider.model.DocumentCreation;
+import ru.corelia.provider.model.DocumentSnapshot;
+import ru.corelia.provider.model.AttachmentMetadata;
+import tools.jackson.databind.JsonNode;
+
+/** Адаптер Platform V, преобразующий документы DataSpace в канонический снимок Corelia. */
+@Component
+public final class PlatformDocumentStore implements DocumentStore {
+    private final DocumentTypeCatalog types;
+    private final DataSpaceClient data;
+    private final PlatformVDocumentBindings bindings;
+
+    public PlatformDocumentStore(DocumentTypeCatalog types, DataSpaceClient data, PlatformVDocumentBindings bindings) {
+        this.types = types;
+        this.data = data;
+        this.bindings = bindings;
+    }
+
+    @Override
+    public void create(DocumentCreation creation, AuthContext auth) {
+        String type = creation.typeCode();
+        types.requireType(type);
+        requirePublishedDocumentType(type, auth);
+        String operation = text(bindings.storage(type).path("operations"), creation.initialAttachment() == null ? "create" : "createWithAttachment");
+        if (operation.isEmpty()) throw new ApiException(500, "Для вида документа не настроена операция создания");
+        var document = object("documentId", creation.documentId(), "documentType", type,
+                "createdBy", creation.createdBy(), "createdAt", PlatformTimestamp.localDateTime(creation.createdAt()));
+        var input = object("document", "ref:createDocument", "status", creation.status());
+        JsonNode mapping = bindings.storage(type).path("fields");
+        creation.attributes().forEach((field, value) -> input.set(text(mapping, field), value));
+        var variables = object("document", document, "input", input,
+                "command", object("document", "ref:createDocument", "commandKey", creation.idempotencyKey(),
+                        "requestHash", creation.requestHash(), "response", "{}"));
+        if (creation.initialAttachment() != null) variables.set("file", attachment(creation.initialAttachment()));
+        data.query(operation, variables, auth);
+    }
+
+    /** Проверяет справочник до записи, чтобы не получать неинформативную ошибку внешнего ключа DataSpace. */
+    private void requirePublishedDocumentType(String type, AuthContext auth) {
+        boolean published = list(data.query("refDocumentTypeListGet", object(), auth)
+                        .path("searchDocumentType").path("elems"))
+                .stream().anyMatch(item -> type.equals(text(item, "id")));
+        if (!published) {
+            throw new ApiException(503, "В DataSpace не опубликован вид документа " + type
+                    + ". Выполните bootstrap справочников Platform V перед созданием документов.");
+        }
+    }
+
+    @Override
+    public DocumentSearchResult search(DocumentSearchRequest request, AuthContext auth) {
+        String type = request.typeCode();
+        types.requireType(type);
+        var result = new ArrayList<DocumentSnapshot>();
+        for (int offset = 0; ; ) {
+            JsonNode page = data.query(text(bindings.storage(type).path("operations"), "search"),
+                    object("cond", condition("documentType.id", type), "offset", offset, "limit", 500), auth).path("searchDocument");
+            List<JsonNode> rows = list(page.path("elems"));
+            rows.stream().filter(row -> type.equals(text(row.path("documentType"), "id")))
+                    .map(row -> DocumentProjection.document(row, types, bindings)).map(this::snapshot).forEach(result::add);
+            offset += rows.size();
+            if (rows.isEmpty() || offset >= number(page, "count", offset)) break;
+        }
+        int from = Math.min(Math.max(0, request.offset()), result.size());
+        int to = Math.min(result.size(), from + Math.max(1, request.limit()));
+        return new DocumentSearchResult(result.subList(from, to), result.size());
+    }
+
+    @Override
+    public DocumentSnapshot get(String typeCode, String documentId, AuthContext auth) {
+        types.requireType(typeCode);
+        JsonNode page = data.query(text(bindings.storage(typeCode).path("operations"), "search"),
+                object("cond", condition("documentId", documentId), "offset", 0, "limit", 2), auth).path("searchDocument");
+        return list(page.path("elems")).stream().filter(row -> documentId.equals(text(row, "documentId")))
+                .filter(row -> typeCode.equals(text(row.path("documentType"), "id")))
+                .map(row -> DocumentProjection.document(row, types, bindings)).map(this::snapshot).findFirst()
+                .orElseThrow(() -> new ApiException(404, "Документ не найден"));
+    }
+
+    private DocumentSnapshot snapshot(JsonNode document) {
+        var attributes = new LinkedHashMap<String, JsonNode>();
+        document.path("attributes").properties().forEach(item -> attributes.put(item.getKey(), item.getValue().deepCopy()));
+        var createdAt = PlatformTimestamp.parse(text(document, "createdAt"));
+        return new DocumentSnapshot(text(document, "documentId"), text(document.path("documentType"), "id"),
+                text(document, "status"), (int) number(document, "version", 0), attributes,
+                text(document, "createdBy"), createdAt, nullableText(document, "changeToken"));
+    }
+
+    private static String nullableText(JsonNode node, String field) {
+        return node.hasNonNull(field) ? text(node, field) : null;
+    }
+
+    private static String condition(String field, String value) {
+        return "it." + field + " == '" + value.replace("'", "''") + "'";
+    }
+
+    private static tools.jackson.databind.node.ObjectNode attachment(AttachmentMetadata value) {
+        var result = object("attachmentId", value.id(), "logicalAttachmentId", value.logicalId(), "documentId", value.documentId(),
+                "fileName", value.fileName(), "contentType", value.contentType(), "size", value.size(), "version", value.version(),
+                "current", value.current(), "storageReference", value.storageReference().value());
+        if (value.uploadedAt() != null) result.put("uploadedAt", PlatformTimestamp.localDateTime(value.uploadedAt()));
+        return result;
+    }
+}
