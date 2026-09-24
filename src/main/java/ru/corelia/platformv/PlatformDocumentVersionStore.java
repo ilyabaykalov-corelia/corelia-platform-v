@@ -72,12 +72,18 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
                 "requestHash", mutation.requestHash(), "response", write(mutation.response())));
         String operation;
         if (mutation.createdVersion() != null) {
-            if (mutation.closedVersion() == null || mutation.createdAttachment() != null || mutation.retiredAttachment() != null)
-                throw new IllegalArgumentException("Некорректная транзакция атрибутов");
+            if (mutation.closedVersion() == null) throw new IllegalArgumentException("Отсутствует закрываемая версия");
             String type = mutation.documentType(); operation = text(bindings.storage(type).path("operations"), "update");
-            var details = mappedAttributes(type, mutation.attributes()); details.put("id", text(document, "detailsId")); vars.set("details", details);
-            vars.set("detailsCompare", mappedAttributes(type, attributes(document.path("attributes")))); vars.set("version", version(mutation.createdVersion(), text(document, "id")));
-            vars.set("previous", closedVersion(mutation.closedVersion()));
+            if (mutation.createdAttachment() == null && mutation.retiredAttachment() == null) {
+                var details = mappedAttributes(type, mutation.attributes()); details.put("id", text(document, "detailsId")); vars.set("details", details);
+                vars.set("detailsCompare", mappedAttributes(type, attributes(document.path("attributes")))); vars.set("version", version(mutation.createdVersion(), text(document, "id")));
+                vars.set("previous", closedVersion(mutation.closedVersion()));
+            } else {
+                vars.set("version", version(mutation.createdVersion(), text(document, "id"))); vars.set("previous", closedVersion(mutation.closedVersion()));
+                if (mutation.createdAttachment() != null) { vars.set("file", attachment(mutation.createdAttachment())); operation = mutation.retiredAttachment() == null ? "commitDocumentFileUpload" : "commitDocumentFileReplace"; }
+                else operation = "commitDocumentFileDelete";
+                if (mutation.retiredAttachment() != null) vars.set("retired", object("id", rawAttachmentId(mutation.documentId(), mutation.retiredAttachment().id(), auth), "current", false));
+            }
         } else if (mutation.closedVersion() != null) {
             vars.set("previous", attachmentManifest(mutation.closedVersion()));
             if (mutation.createdAttachment() != null) {
