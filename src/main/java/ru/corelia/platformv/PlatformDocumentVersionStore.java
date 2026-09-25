@@ -86,7 +86,7 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
                 if (mutation.retiredAttachment() != null) vars.set("retired", object("id", rawAttachmentId(mutation.documentId(), mutation.retiredAttachment().id(), auth), "current", false));
             }
         } else if (mutation.closedVersion() != null) {
-            vars.set("previous", closedVersion(mutation.closedVersion()));
+            vars.set("previous", attachmentManifest(mutation.closedVersion()));
             vars.set("document", update);
             if (mutation.createdAttachment() != null) {
                 vars.set("file", attachment(mutation.createdAttachment())); operation = mutation.retiredAttachment() == null ? "commitDocumentFileUpload" : "commitDocumentFileReplace";
