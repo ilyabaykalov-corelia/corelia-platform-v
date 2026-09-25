@@ -42,7 +42,7 @@ public final class PlatformDocumentStore implements DocumentStore {
         creation.attributes().forEach((field, value) -> input.set(text(mapping, field), value));
         var variables = object("document", document, "input", input,
                 "command", object("document", "ref:createDocument", "commandKey", creation.idempotencyKey(),
-                        "requestHash", creation.requestHash(), "response", "{}"));
+                        "requestHash", creation.requestHash(), "response", "{}", "history", creation.history() == null ? "" : write(creation.history())));
         if (creation.initialAttachment() != null) variables.set("file", attachment(creation.initialAttachment()));
         data.query(operation, variables, auth);
     }
