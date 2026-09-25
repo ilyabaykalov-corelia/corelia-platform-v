@@ -92,9 +92,15 @@ public final class PlatformDocumentStore implements DocumentStore {
         var attributes = new LinkedHashMap<String, JsonNode>();
         document.path("attributes").properties().forEach(item -> attributes.put(item.getKey(), item.getValue().deepCopy()));
         var createdAt = PlatformTimestamp.parse(text(document, "createdAt"));
+        int version = (int) number(document, "version", 0);
+        String changeToken = nullableText(document, "changeToken");
+        if (document.path("document").isObject()) {
+            version = (int) number(document.path("document"), "version", version);
+            changeToken = nullableText(document.path("document"), "changeToken");
+        }
         return new DocumentSnapshot(text(document, "documentId"), text(document.path("documentType"), "id"),
-                text(document, "status"), (int) number(document, "version", 0), attributes,
-                text(document, "createdBy"), createdAt, nullableText(document, "changeToken"));
+                text(document, "status"), version, attributes,
+                text(document, "createdBy"), createdAt, changeToken);
     }
 
     private static String nullableText(JsonNode node, String field) {

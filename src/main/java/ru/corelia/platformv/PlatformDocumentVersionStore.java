@@ -80,12 +80,14 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
                 vars.set("previous", closedVersion(mutation.closedVersion()));
             } else {
                 vars.set("version", version(mutation.createdVersion(), text(document, "id"))); vars.set("previous", closedVersion(mutation.closedVersion()));
+                vars.set("document", update);
                 if (mutation.createdAttachment() != null) { vars.set("file", attachment(mutation.createdAttachment())); operation = mutation.retiredAttachment() == null ? "commitDocumentFileUpload" : "commitDocumentFileReplace"; }
                 else operation = "commitDocumentFileDelete";
                 if (mutation.retiredAttachment() != null) vars.set("retired", object("id", rawAttachmentId(mutation.documentId(), mutation.retiredAttachment().id(), auth), "current", false));
             }
         } else if (mutation.closedVersion() != null) {
-            vars.set("previous", attachmentManifest(mutation.closedVersion()));
+            vars.set("previous", closedVersion(mutation.closedVersion()));
+            vars.set("document", update);
             if (mutation.createdAttachment() != null) {
                 vars.set("file", attachment(mutation.createdAttachment())); operation = mutation.retiredAttachment() == null ? "commitDocumentFileUpload" : "commitDocumentFileReplace";
             } else {
