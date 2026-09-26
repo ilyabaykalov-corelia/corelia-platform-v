@@ -49,6 +49,11 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
         return search("searchDocumentCommand", "commandKey", key, auth).stream().filter(value -> key.equals(text(value, "commandKey"))).findFirst()
                 .map(value -> new IdempotencyReceipt(text(value, "requestHash"), parse(text(value, "response")))).orElse(null);
     }
+    @Override public List<JsonNode> history(String documentId, AuthContext auth) {
+        return search("searchDocumentCommand", "document.documentId", documentId, auth).stream()
+                .filter(value -> documentId.equals(text(value.path("document"), "documentId")))
+                .map(value -> text(value, "history")).filter(value -> !value.isEmpty()).map(ru.corelia.support.Json::parse).toList();
+    }
 
     @Override public void commit(DocumentMutation mutation, AuthContext auth) {
         if (receipt(mutation.idempotencyKey(), auth) != null) return;
@@ -69,17 +74,25 @@ public final class PlatformDocumentVersionStore implements DocumentVersionStore 
             return;
         }
         var vars = object("document", update, "compare", compare, "command", object("document", text(document, "id"), "commandKey", mutation.idempotencyKey(),
-                "requestHash", mutation.requestHash(), "response", write(mutation.response())));
+                "requestHash", mutation.requestHash(), "response", write(mutation.response()), "history", mutation.history() == null ? "" : write(mutation.history())));
         String operation;
         if (mutation.createdVersion() != null) {
-            if (mutation.closedVersion() == null || mutation.createdAttachment() != null || mutation.retiredAttachment() != null)
-                throw new IllegalArgumentException("Некорректная транзакция атрибутов");
+            if (mutation.closedVersion() == null) throw new IllegalArgumentException("Отсутствует закрываемая версия");
             String type = mutation.documentType(); operation = text(bindings.storage(type).path("operations"), "update");
-            var details = mappedAttributes(type, mutation.attributes()); details.put("id", text(document, "detailsId")); vars.set("details", details);
-            vars.set("detailsCompare", mappedAttributes(type, attributes(document.path("attributes")))); vars.set("version", version(mutation.createdVersion(), text(document, "id")));
-            vars.set("previous", closedVersion(mutation.closedVersion()));
+            if (mutation.createdAttachment() == null && mutation.retiredAttachment() == null) {
+                var details = mappedAttributes(type, mutation.attributes()); details.put("id", text(document, "detailsId")); vars.set("details", details);
+                vars.set("detailsCompare", mappedAttributes(type, attributes(document.path("attributes")))); vars.set("version", version(mutation.createdVersion(), text(document, "id")));
+                vars.set("previous", closedVersion(mutation.closedVersion()));
+            } else {
+                vars.set("version", version(mutation.createdVersion(), text(document, "id"))); vars.set("previous", closedVersion(mutation.closedVersion()));
+                vars.set("document", update);
+                if (mutation.createdAttachment() != null) { vars.set("file", attachment(mutation.createdAttachment())); operation = mutation.retiredAttachment() == null ? "commitDocumentFileUpload" : "commitDocumentFileReplace"; }
+                else operation = "commitDocumentFileDelete";
+                if (mutation.retiredAttachment() != null) vars.set("retired", object("id", rawAttachmentId(mutation.documentId(), mutation.retiredAttachment().id(), auth), "current", false));
+            }
         } else if (mutation.closedVersion() != null) {
             vars.set("previous", attachmentManifest(mutation.closedVersion()));
+            vars.set("document", update);
             if (mutation.createdAttachment() != null) {
                 vars.set("file", attachment(mutation.createdAttachment())); operation = mutation.retiredAttachment() == null ? "commitDocumentFileUpload" : "commitDocumentFileReplace";
             } else {
