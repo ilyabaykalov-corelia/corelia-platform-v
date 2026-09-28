@@ -5,3 +5,6 @@
 Тела операций больше не входят в ресурсы библиотеки. Они находятся в customer package, выбранном CORELIA_CONFIG_PATH. Для СберНПФ исходники находятся в соседнем sber-npf-corelia-config; компилятор сохраняет точные тексты и условия доступа платформы.
 
 [Контракт и компилятор](../docs/configuration.md). [Проверки](../docs/testing.md). Явно различать проверки PlatformStub и реальную модель/permissions/BPM.
+# Документация
+
+Актуальный compiler и границы adapter Platform V описаны в [docs/README.md](docs/README.md).

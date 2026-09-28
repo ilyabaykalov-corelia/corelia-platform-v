@@ -5,9 +5,11 @@ import static ru.corelia.support.Json.*;
 import org.springframework.stereotype.Component;
 
 import ru.corelia.auth.AuthContext;
+import ru.corelia.config.CoreliaConfig;
 import ru.corelia.http.ApiException;
 import ru.corelia.observability.CoreliaObservability;
 import ru.corelia.observability.TraceContextPropagation;
+import ru.corelia.transport.UpstreamResponse;
 
 import tools.jackson.databind.JsonNode;
 
@@ -27,11 +29,18 @@ public class PlatformHttp {
                     .build();
     private final CoreliaObservability observability;
     private final TraceContextPropagation traceContext;
+    private final CoreliaConfig config;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public PlatformHttp(
-            CoreliaObservability observability, TraceContextPropagation traceContext) {
+            CoreliaObservability observability, TraceContextPropagation traceContext, CoreliaConfig config) {
         this.observability = observability;
         this.traceContext = traceContext;
+        this.config = config;
+    }
+
+    public PlatformHttp(CoreliaObservability observability, TraceContextPropagation traceContext) {
+        this(observability, traceContext, null);
     }
 
     public JsonNode platform(String url, String method, JsonNode body, AuthContext auth) {
@@ -134,10 +143,10 @@ public class PlatformHttp {
                 observability.externalRequest(client, operation, "success");
                 return response;
             }
-            try (var body = response.body()) {
-                String raw = new String(body.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-                throw new ApiException(response.statusCode() >= 500 ? 502 : response.statusCode(), fallback(normalizeText(raw), "Platform V API вернул HTTP " + response.statusCode()));
-            }
+            String raw = new String(
+                        UpstreamResponse.read(response, maxResponseBytes()).body(),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            throw new ApiException(response.statusCode() >= 500 ? 502 : response.statusCode(), fallback(normalizeText(raw), "Platform V API вернул HTTP " + response.statusCode()));
         } catch (ApiException error) {
             observability.externalRequest(client, operation, error.status() == 504 ? "timeout" : "error");
             throw error;
@@ -185,7 +194,9 @@ public class PlatformHttp {
             traceContext.inject(builder);
             var response = observability.observe(client + "." + operation, () -> {
                 try {
-                    return this.client.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
+                    return UpstreamResponse.read(
+                            this.client.send(builder.build(), HttpResponse.BodyHandlers.ofInputStream()),
+                            maxResponseBytes());
                 } catch (IOException error) {
                     throw new PlatformCallException(error);
                 } catch (InterruptedException error) {
@@ -246,6 +257,10 @@ public class PlatformHttp {
         PlatformCallException(Exception cause) {
             super(cause);
         }
+    }
+
+    private long maxResponseBytes() {
+        return config == null ? 10L * 1024 * 1024 : UpstreamResponse.maxResponseBytes(config);
     }
 
     public static String errorMessage(JsonNode payload) {
