@@ -75,6 +75,21 @@ public final class PlatformVConfigurationCompiler {
             Path entities = Files.createDirectories(runtime.resolve("data-model/entities"));
             Path ui = Files.createDirectories(runtime.resolve("ui"));
             Path authorization = Files.createDirectories(runtime.resolve("permissions"));
+            if (loaded.kafkaDocumentCreation() != null) {
+                sources.put("integrations", "integrations");
+                Path integrations = Files.createDirectories(runtime.resolve("integrations"));
+                var kafka = loaded.kafkaDocumentCreation();
+                ObjectNode integration = JSON.createObjectNode().put("id", "kafkaDocumentCreation").put("consumerGroup", kafka.consumerGroup());
+                ObjectNode actor = integration.putObject("actor");
+                actor.put("id", kafka.actor().id()); actor.put("login", kafka.actor().login()); actor.put("fullName", kafka.actor().fullName());
+                if (!kafka.actor().email().isBlank()) actor.put("email", kafka.actor().email());
+                var roles = actor.putArray("roles");
+                for (String role : kafka.actor().roles()) roles.add(role);
+                actor.put("taskUsername", kafka.actor().taskUsername());
+                var routes = integration.putArray("routes");
+                for (var route : kafka.routes()) routes.addObject().put("topic", route.topic()).put("typeCode", route.typeCode());
+                Files.writeString(integrations.resolve("kafka-document-creation.json"), JSON.writerWithDefaultPrettyPrinter().writeValueAsString(integration));
+            }
             var hashes = JSON.createObjectNode();
             for (var entry : operationsCatalog.entrySet()) {
                 String relative = "graphql/" + entry.getKey() + ".graphql";
